@@ -1,0 +1,21 @@
+{
+  "name": "Dutch gas prices",
+  "version": "2021.7.16.1",
+  "slug": "dutch_gas_prices",
+  "description": "Get gas prices from dutch gas stations",
+  "url": "https://github.com/skons/hassio-addons/dutch_gas_prices",
+  "arch": ["aarch64", "amd64", "armv7", "i386"],
+  "startup": "services",
+  "options": {
+    "log_level": "info"
+  },
+  "schema": {
+    "log_level": "list(critical|error|warning|info|debug|trace)"
+  },
+  "ports": {
+    "5035/tcp": 5035
+  },
+  "ports_description": {
+    "5035/tcp": "Dutch gas prices api port"
+  }
+}
