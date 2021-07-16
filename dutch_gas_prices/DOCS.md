@@ -8,12 +8,12 @@ Get information about fuel prices in the netherlands
 
 The `log_level` option controls the level of log output by uvicorn. Possible values are:
 
-- `trace`: Show every detail, like all called internal functions.
-- `debug`: Shows detailed debug information.
-- `info`: Normal (usually) interesting events.
-- `warning`: Exceptional occurrences that are not errors.
-- `error`: Runtime errors that do not require immediate action.
-- `fatal`: Something went terribly wrong. Add-on becomes unusable.
+- critical
+- error
+- warning
+- info
+- debug
+- trace
 
 ## Home Assistant Sensor
 

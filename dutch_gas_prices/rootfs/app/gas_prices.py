@@ -161,4 +161,4 @@ def gas_prices(station_id, fuel = None):
     return return_value
 
 if __name__ == '__main__':
-    #gas_prices('00000') # Executed when this file is triggered directly
+    gas_prices('00000') # Executed when this file is triggered directly
