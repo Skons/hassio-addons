@@ -106,6 +106,12 @@ sensor:
     {{ value_json.status }}
 ```
 
+## Troubleshooting
+
+- First check in the log of the addon if the addon is up and running
+- Also check for the response the addon is providing in the log file if things don't work out as expected
+- To check if there should be results, go to http://homeassistant.local:5035/docs and try to query the addon directly
+
 ## Known Issues
 
 - There are cases where the installation causes a crash, after a reboot, you can retry the installation

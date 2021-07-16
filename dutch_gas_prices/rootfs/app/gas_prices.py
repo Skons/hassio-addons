@@ -1,6 +1,7 @@
 """
 Dutch Gas prices API Module
 """
+import sys
 import json
 import os
 import time, datetime
@@ -41,10 +42,6 @@ def gas_prices(station_id, fuel = None):
                 return_value1 = word_list[-1].replace(',', '.')
                 return_value2 = re.sub("[^0-9,.]", "", return_value1)
                 return_value = float(return_value2)
-                if return_value > 2:
-                    return_value = float(return_value2[0] + '.' + return_value2[1])
-                else:
-                    pass
         except Exception as exception_info:
             print(f'_search_value failed: {exception_info}')
 
@@ -161,4 +158,4 @@ def gas_prices(station_id, fuel = None):
     return return_value
 
 if __name__ == '__main__':
-    gas_prices('00000') # Executed when this file is triggered directly
+    gas_prices(str(sys.argv[1])) #if called upon directly, use gas_prices.py stationid
