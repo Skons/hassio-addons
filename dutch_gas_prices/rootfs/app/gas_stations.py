@@ -1,6 +1,7 @@
 """
 Dutch Gas prices API Module
 """
+import sys
 import json
 import os
 import time
@@ -111,4 +112,4 @@ def gas_stations(fuel,longitude,latitude,radius):
     return return_value
 
 if __name__ == '__main__':
-    gas_stations('lpg','4.89','52.37','5') # Executed when this file is triggered directly
+    gas_stations(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]), str(sys.argv[4])) #if called upon directly, use gas_stations.py fueltype longitude latitude radius
