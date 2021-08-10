@@ -3,7 +3,6 @@ Dutch Gas prices API Module
 """
 import sys
 import json
-import os
 import time, datetime
 from io import BytesIO
 import re
@@ -12,6 +11,7 @@ import requests
 import math
 import pytesseract
 from fake_headers import Headers
+from dgp_common import _read_cached_jsonfile
 
 # Settings
 # Something like lru_cache would be nice but has no time expiring support, so custom json storage
@@ -62,10 +62,11 @@ def gas_prices(station_id, fuel = None):
             newsize = (width*2, height*2)
             img2 = img2.resize(newsize) #resize for better ocr
             draw = ImageDraw.Draw(img2)
-            draw.rectangle((((width*2) - 180), 100, (width*2), 0), fill=240) #replace logo, prevent OCR from reading text
+            draw.rectangle((((width*2) - 160), 100, (width*2), 0), fill=240) #replace logo, prevent OCR from reading text. The logo is detectable by background color (#TODO)
             img2.save(f'cache/{station_id}.png')
             ocr_result = pytesseract.image_to_string(img2, config='--psm 6 --oem 3') #configure tesseract explicit
             ocr_lines = ocr_result.split("\n")
+            ocr_lines = list(filter(None, ocr_lines)) #Filter out empty values
 
             #lowercase definition of fuels to search
             euro95_prijs = _search_value(ocr_lines, ['euro 95','euro95','(e10)'])
@@ -80,10 +81,11 @@ def gas_prices(station_id, fuel = None):
                     'euro98': euro98_prijs,
                     'diesel' : diesel_prijs,
                     'lpg' : lpg_prijs,
-                    'ocr_station' : ocr_lines[0],
+                    'station_street' : ocr_lines[0],
+                    'station_address' : ocr_lines[1],
                     'timestamp': datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
                     'status' : 'Station exists?'
-                    }
+                }
             else:
                 data = {
                     'station_id': station_id,
@@ -91,10 +93,11 @@ def gas_prices(station_id, fuel = None):
                     'euro98': euro98_prijs,
                     'diesel' : diesel_prijs,
                     'lpg' : lpg_prijs,
-                    'ocr_station' : ocr_lines[0],
+                    'station_street' : ocr_lines[0],
+                    'station_address' : ocr_lines[1],
                     'timestamp': datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
                     'status' : 'Ok'
-                    }
+                }
 
             with open('cache/' + f'{station_id}.json', 'w') as outfile:
                 json.dump(data, outfile)
@@ -110,52 +113,32 @@ def gas_prices(station_id, fuel = None):
                 'euro98': None,
                 'diesel' : None,
                 'lpg' : None,
-                'ocr_station' : None,
+                'station_street' : None,
+                'station_address' : None,
                 'timestamp' : None,
                 'status' : f'{response.status_code}'
-                }
+            }
         return data
 
-
-    def _read_stationdata(station_id):
-        """
-        Get the cached json file
-        """
-        with open('cache/' + f'{station_id}.json') as json_file:
-            data = json.load(json_file)
-            return data
-
-
-    def _file_age(station_id):
-        """
-        Calculate the json file age
-        """
-        try:
-            return time.time() - os.path.getmtime('cache/' + f'{station_id}.json')
-        except IOError:
-            return 99999999
-
     # Main logic
-    age_of_file = _file_age(station_id)
-    if age_of_file < CACHE_TIME:
-        print(f'Station id {station_id} cache request')
-        return_value = _read_stationdata(station_id)
-    else:
+    return_value = _read_cached_jsonfile('cache/' + f'{station_id}.json', CACHE_TIME)
+    if return_value == False:
         print(f'Station id {station_id} new request')
         return_value = _write_stationdata(station_id)
 
     #Only return the fuel that was requested
     if fuel:
         newdata = {
-                'station_id': return_value['station_id'],
-                'prijs': return_value[fuel],
-                'ocr_station' : return_value['ocr_station'],
-                'timestamp' : return_value['timestamp'],
-                'status' : return_value['status']
-                }
+            'station_id': return_value['station_id'],
+            'prijs': return_value[fuel],
+            'station_street' : return_value['station_street'],
+            'station_address' : return_value['station_address'],
+            'timestamp' : return_value['timestamp'],
+            'status' : return_value['status']
+        }
         return_value = newdata
     print (return_value)
     return return_value
 
 if __name__ == '__main__':
-    gas_prices(str(sys.argv[1])) #if called upon directly, use gas_prices.py stationid
+    gas_prices(str(sys.argv[1])) #if called upon directly, use gas_prices.py [stationid]
