@@ -1,9 +1,8 @@
 """
-Dutch Gas prices API Module
+Dutch Gas stations API Module
 """
 import sys
 import json
-import os
 import time
 from io import BytesIO
 import re
@@ -13,10 +12,11 @@ import pytesseract
 from fake_headers import Headers
 from geopy import distance
 from gas_prices import gas_prices
+from dgp_common import _read_cached_jsonfile
 
 # Settings
 # Something like lru_cache would be nice but has no time expiring support, so custom json storage
-CACHE_TIME = 86400 #24h, could be longer, stations don't come and go very often
+CACHE_TIME_STATIONS = 86400 #24h, could be longer, stations don't come and go very often
 
 def gas_stations(fuel,longitude,latitude,radius):
     """
@@ -61,29 +61,9 @@ def gas_stations(fuel,longitude,latitude,radius):
             data = {}
         return data
 
-    def _read_stationdata():
-        """
-        Get the cached json file
-        """
-        with open('cache/' + f'{fuel}.json') as json_file:
-            data = json.load(json_file)
-            return data
-
-    def _file_age(fuel):
-        """
-        Calculate the json file age
-        """
-        try:
-            return time.time() - os.path.getmtime('cache/' + f'{fuel}.json')
-        except IOError:
-            return 99999999
-
     # Main logic
-    age_of_file = _file_age(fuel)
-    if age_of_file < CACHE_TIME:
-        print(f'Fuel {fuel} cache request')
-        stationdata = _read_stationdata()
-    else:
+    stationdata = _read_cached_jsonfile('cache/' + f'{fuel}.json', CACHE_TIME_STATIONS)
+    if stationdata == False:
         print(f'Fuel {fuel} new request')
         stationdata = _write_stationdata()
 
@@ -102,9 +82,10 @@ def gas_stations(fuel,longitude,latitude,radius):
         newstation['fuel'] = fuel
         return_value = is_location_in_radius(latitude, longitude, newstation['latitude'] , newstation['longitude'], radius)
         if return_value == True:
-            gasprices = gas_prices(station['id'], fuel)
-            if gasprices['prijs']:
-                stations.append({**newstation, **gasprices})
+            gasprices = gas_prices(station['id'], fuel) #get the corresponding gas station and its prices
+            if 'prijs' in gasprices:
+                newstation = {**newstation, **gasprices}
+                stations.append(newstation)
 
     return_value = {}
     return_value['gas_stations'] = sorted(stations, key=lambda x: x['prijs'], reverse=False) #sort on prijs, cheapest first
@@ -112,4 +93,4 @@ def gas_stations(fuel,longitude,latitude,radius):
     return return_value
 
 if __name__ == '__main__':
-    gas_stations(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]), str(sys.argv[4])) #if called upon directly, use gas_stations.py fueltype longitude latitude radius
+    gas_stations(str(sys.argv[1]), str(sys.argv[2]), str(sys.argv[3]), str(sys.argv[4])) #if called upon directly, use gas_stations.py [fueltype] [longitude] [latitude] [radius]

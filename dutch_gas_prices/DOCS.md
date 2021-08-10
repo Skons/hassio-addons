@@ -32,40 +32,45 @@ sensor:
 - platform: rest
   name: Gas stations within radius
   scan_interval: 600
+  timeout: 180
   resource_template: http://homeassistant.local:5035/api/v1/gas_stations/euro95?radius=5&longitude={{ state_attr("zone.home", "longitude") }}&latitude={{ state_attr("zone.home", "latitude") }}
   method: GET
   json_attributes:
     - gas_stations
   value_template: >
-    {% if (value_json.gas_stations[0].prijs) %}
-      {{ value_json.gas_stations | length }}
-    {% endif %}
+    {{ value_json.gas_stations | length }}
 ```
 
 Next you will need to create a pyton script to convert the attributes of the REST sensor into sperate entities. Follow this https://www.home-assistant.io/integrations/python_script/ first to get started with python scripts. Then save this script as dutch_gas_prices.py
 
 ```python
-gas_stations = hass.states.get('sensor.gas_stations_within_radius').attributes['gas_stations']
+gas_stations_attributes = hass.states.get('sensor.gas_stations_within_radius').attributes
 
 index = 0
 sensor_name = ""
 entry = {}
 entities = {}
-entities['entities'] = []
-for item in gas_stations:
-    if item.get('prijs'):
-        entry = {
-            "brand" : item.get('brand'),
-            "name" : item.get('name'),
-            "longitude" : float(item.get('longitude')),
-            "latitude" : float(item.get('latitude')),
-            "prijs" : item.get('prijs'),
-            "timestamp" : str(item.get('timestamp'))
-        }
-        index= index+1
-        sensor_name = 'gasstation.' + str(index)
-        entities['entities'].append(sensor_name) #used for a group
-        hass.states.set(sensor_name, entry['prijs'], entry)
+entities['entity_id'] = []
+try:
+    for item in gas_stations_attributes['gas_stations']:
+        if item.get('prijs'):
+            entry = {
+                "brand" : item.get('brand'),
+                "name" : item.get('name'),
+                "longitude" : float(item.get('longitude')),
+                "latitude" : float(item.get('latitude')),
+                "street" : str(item.get('station_street')),
+                "address" : str(item.get('station_address')),
+                "prijs" : item.get('prijs'),
+                "timestamp" : str(item.get('timestamp')),
+                "friendly_name" : item.get('name') + " (" + item.get('brand') + ")"
+            }
+            index= index+1
+            sensor_name = 'gasstation.' + str(index)
+            entities['entity_id'].append(sensor_name) #used for a group
+            hass.states.set(sensor_name, entry['prijs'], entry)
+except:
+    logger.warn('Error in dutch_gas_prices.py')
 
 #set the group
 hass.states.set('group.gasstations', index, entities)
