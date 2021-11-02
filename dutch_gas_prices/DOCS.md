@@ -21,19 +21,19 @@ This addon only provides an API. To get the information into Home Assistant, a R
 
 ### Gas stations based on location and radius
 
-First we need a sensor where the attributes is filled with all stations in the specified radius. For the fuel the following can be used
--euro95
--euro98
--diesel
--lpg
+First we need a sensor where the attributes is filled with all stations in the specified radius. For the fuel the following can be used:
+- euro95
+- euro98
+- diesel
+- lpg
 
 ```yaml
 sensor:
 - platform: rest
   name: Gas stations within radius
-  scan_interval: 600
+  scan_interval: 7776000 #This disables the automatic scanning, an automation is needed to update this sensor
   timeout: 180
-  resource_template: http://homeassistant.local:5035/api/v1/gas_stations/euro95?radius=5&longitude={{ state_attr("zone.home", "longitude") }}&latitude={{ state_attr("zone.home", "latitude") }}
+  resource_template: http://homeassistant.local:5035/api/v1/gas_stations/euro95?radius=5&longitude={{ state_attr("person.skons", "longitude") }}&latitude={{ state_attr("person.skons", "latitude") }}
   method: GET
   json_attributes:
     - gas_stations
@@ -41,7 +41,7 @@ sensor:
     {{ value_json.gas_stations | length }}
 ```
 
-Next you will need to create a pyton script to convert the attributes of the REST sensor into sperate entities. Follow this https://www.home-assistant.io/integrations/python_script/ first to get started with python scripts. Then save this script as dutch_gas_prices.py
+Next you will need to create a pyton script to convert the attributes of the REST sensor into sperate entities. Follow this https://www.home-assistant.io/integrations/python_script/ first to get started with python scripts. Then save the script below as dutch_gas_prices.py
 
 ```python
 gas_stations_attributes = hass.states.get('sensor.gas_stations_within_radius').attributes
@@ -76,16 +76,39 @@ except:
 hass.states.set('group.gasstations', index, entities)
 ```
 
-This automation will convert the gas stations into separate entities every minute.
+The following automations will update the gas stations when required and send the cheapest gas station to your app.
 
 ```yaml
 automation:
+#trigger the gas station retreival
+- alias: Retreive gas stations within radius
+  trigger:
+    #choose your trigger
+  action:
+  - service: homeassistant.update_entity
+    target:
+      entity_id: sensor.gas_stations_within_radius
+
+#convert the gas stations into separate entities once the gas_stations_within_radius is updated.
 - alias: Update gas stations
   trigger:
-  - minutes: /1
-    platform: time_pattern
+  - platform: state
+    entity_id: sensor.gas_stations_within_radius
   action:
   - service: python_script.dutch_gas_prices
+
+#send the cheapest gas station with a google maps link
+- alias: Notify cheapest gas station
+  trigger:
+  - platform: state
+    entity_id: gasstation.1
+  action:
+  - service: notify.mobile_app_ios
+    data:
+      title: Cheapest gas station
+      message: 'Gas costs € {{ state_attr("gasstation.1", "prijs") }} at {{ state_attr("gasstation.1","friendly_name") }}. '
+      data:
+        url: https://www.google.com/maps/search/?api=1&query={{ state_attr("gasstation.1","latitude") }},{{ state_attr("gasstation.1", "longitude") }}
 ```
 
 ### Gas stations based on id
@@ -115,6 +138,7 @@ sensor:
 
 - First check in the log of the addon if the addon is up and running
 - Also check for the response the addon is providing in the log file if things don't work out as expected
+- Especially if you do not get any response and there are a lot of gas stations within a certain radius. Review request_duration in the log
 - To check if there should be results, go to http://homeassistant.local:5035/docs and try to query the addon directly
 
 ## Known Issues

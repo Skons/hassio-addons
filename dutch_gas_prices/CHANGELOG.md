@@ -1,5 +1,11 @@
 # Changelog
 
+## 2021.11.2.1
+
+- Documentation updates
+- Added request_start, request_end and request_duration for the gas_stations api call
+- Fixed error 17 when trying to install DGP
+
 ## 2021.8.10.1
 
 - Documentation updates

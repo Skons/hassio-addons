@@ -25,24 +25,27 @@ RUN \
         linux-headers \
         libffi-dev \
         rust \
-        cargo\
-        openssl-dev \
-        #infra
-        && mkdir -p /app \
-        && mkdir -p /app/cache \
-        #pillow
-        && pip3 install Pillow \
-        #requirements
-        && pip3 install uvicorn \
+        cargo 
+#infra
+RUN \
+        mkdir -p /app \
+        && mkdir -p /app/cache
+#pillow
+RUN \
+         pip3 install Pillow 
+#requirements
+RUN \
+        pip3 install uvicorn \
         fastapi \
         requests \
         requests[socks] \
         requests[security] \
         fake_headers \
         pytesseract \
-        geopy \
-        #make it run
-        && chmod a+x /run.sh
+        geopy
+#make it run
+RUN \
+        chmod a+x /run.sh
 
 WORKDIR /app/
 CMD [ "/run.sh" ]

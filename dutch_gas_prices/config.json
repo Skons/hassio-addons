@@ -1,9 +1,9 @@
 {
   "name": "Dutch gas prices",
-  "version": "2021.8.10.1",
+  "version": "2021.11.2.1",
   "slug": "dutch_gas_prices",
   "description": "Get gas prices from dutch gas stations",
-  "url": "https://github.com/skons/hassio-addons/dutch_gas_prices",
+  "url": "https://github.com/Skons/hassio-addons/tree/main/dutch_gas_prices",
   "arch": ["aarch64", "amd64", "armv7", "i386"],
   "startup": "services",
   "options": {

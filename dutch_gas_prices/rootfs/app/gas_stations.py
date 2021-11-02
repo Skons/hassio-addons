@@ -3,7 +3,7 @@ Dutch Gas stations API Module
 """
 import sys
 import json
-import time
+import time, datetime
 from io import BytesIO
 import re
 from PIL import Image
@@ -24,6 +24,7 @@ def gas_stations(fuel,longitude,latitude,radius):
     """
 
     url = f'https://tankservice.app-it-up.com/Tankservice/v1/places?fmt=web&fuel={fuel}'
+    request_start =  datetime.datetime.utcnow()
 
     def is_location_in_radius(lat, lon, station_lat, station_lon, km):
         center_point = [{'lat': lat, 'lng': lon}]
@@ -81,6 +82,7 @@ def gas_stations(fuel,longitude,latitude,radius):
         newstation['longitude'] = float(station_lon[:1] + "." + station_lon[1:])
         newstation['fuel'] = fuel
         return_value = is_location_in_radius(latitude, longitude, newstation['latitude'] , newstation['longitude'], radius)
+        #station = {}
         if return_value == True:
             gasprices = gas_prices(station['id'], fuel) #get the corresponding gas station and its prices
             if 'prijs' in gasprices:
@@ -88,7 +90,11 @@ def gas_stations(fuel,longitude,latitude,radius):
                 stations.append(newstation)
 
     return_value = {}
+    return_value['request_start'] = request_start.replace(tzinfo=datetime.timezone.utc).isoformat()
     return_value['gas_stations'] = sorted(stations, key=lambda x: x['prijs'], reverse=False) #sort on prijs, cheapest first
+    request_end = datetime.datetime.utcnow()
+    return_value['request_end'] = request_end.replace(tzinfo=datetime.timezone.utc).isoformat()
+    return_value['request_duration'] = request_end.timestamp() - request_start.timestamp()
     print(return_value)
     return return_value
 
