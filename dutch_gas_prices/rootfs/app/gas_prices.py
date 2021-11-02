@@ -64,6 +64,7 @@ def gas_prices(station_id, fuel = None):
             draw = ImageDraw.Draw(img2)
             draw.rectangle((((width*2) - 160), 100, (width*2), 0), fill=240) #replace logo, prevent OCR from reading text. The logo is detectable by background color (#TODO)
             img2.save(f'cache/{station_id}.png')
+
             ocr_result = pytesseract.image_to_string(img2, config='--psm 6 --oem 3') #configure tesseract explicit
             ocr_lines = ocr_result.split("\n")
             ocr_lines = list(filter(None, ocr_lines)) #Filter out empty values
