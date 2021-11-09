@@ -1,5 +1,12 @@
 # Changelog
 
+## 2021.11.8.1
+
+**Important**: This addon no longer relies on uvicorn and fastapi, it now makes use of MQTT. This chanage is **breaking** please read the docs
+
+- Switched to MQTT
+- The sensors are renamed
+
 ## 2021.11.2.1
 
 - Documentation updates

@@ -6,144 +6,110 @@ Get information about fuel prices in the netherlands
 
 ### Option: `log_level`
 
-The `log_level` option controls the level of log output by uvicorn. Possible values are:
+The `log_level` option controls the level of logging. Possible values are:
 
 - critical
 - error
 - warning
 - info
 - debug
-- trace
+
+### Option: `mqtt_host`
+
+The DNS or IP address of your MQTT host. If you are running mosquitto on HA, you do not need to configure this option.
+
+### Option: `mqtt_port`
+
+The port number of your MQTT host. If you are running mosquitto on HA, you do not need to configure this option.
+
+### Option: `mqtt_username`
+
+The username used to connect to the MQTT host
+
+### Option: `mqtt_password`
+
+The password used to connect to the MQTT host
 
 ## Home Assistant Sensor
 
-This addon only provides an API. To get the information into Home Assistant, a REST call is needed to query the API.
+MQTT is used to automatically have sensors discovered. A sensor per gas station and per fuel_type will appear alongside the sensor.dutch_gas_prices_status. The latter one will provide information about the processing time.
 
-### Gas stations based on location and radius
-
-First we need a sensor where the attributes is filled with all stations in the specified radius. For the fuel the following can be used:
+The following fuel_type can be used in the payloads below.
 - euro95
 - euro98
 - diesel
 - lpg
 
-```yaml
-sensor:
-- platform: rest
-  name: Gas stations within radius
-  scan_interval: 7776000 #This disables the automatic scanning, an automation is needed to update this sensor
-  timeout: 180
-  resource_template: http://homeassistant.local:5035/api/v1/gas_stations/euro95?radius=5&longitude={{ state_attr("person.skons", "longitude") }}&latitude={{ state_attr("person.skons", "latitude") }}
-  method: GET
-  json_attributes:
-    - gas_stations
-  value_template: >
-    {{ value_json.gas_stations | length }}
-```
+### Gas stations based on location and radius
 
-Next you will need to create a pyton script to convert the attributes of the REST sensor into sperate entities. Follow this https://www.home-assistant.io/integrations/python_script/ first to get started with python scripts. Then save the script below as dutch_gas_prices.py
-
-```python
-gas_stations_attributes = hass.states.get('sensor.gas_stations_within_radius').attributes
-
-index = 0
-sensor_name = ""
-entry = {}
-entities = {}
-entities['entity_id'] = []
-try:
-    for item in gas_stations_attributes['gas_stations']:
-        if item.get('prijs'):
-            entry = {
-                "brand" : item.get('brand'),
-                "name" : item.get('name'),
-                "longitude" : float(item.get('longitude')),
-                "latitude" : float(item.get('latitude')),
-                "street" : str(item.get('station_street')),
-                "address" : str(item.get('station_address')),
-                "prijs" : item.get('prijs'),
-                "timestamp" : str(item.get('timestamp')),
-                "friendly_name" : item.get('name') + " (" + item.get('brand') + ")"
-            }
-            index= index+1
-            sensor_name = 'gasstation.' + str(index)
-            entities['entity_id'].append(sensor_name) #used for a group
-            hass.states.set(sensor_name, entry['prijs'], entry)
-except:
-    logger.warn('Error in dutch_gas_prices.py')
-
-#set the group
-hass.states.set('group.gasstations', index, entities)
-```
-
-The following automations will update the gas stations when required and send the cheapest gas station to your app.
+Create an automation that will send a JSON payload to the correct MQTT topic
 
 ```yaml
 automation:
-#trigger the gas station retreival
-- alias: Retreive gas stations within radius
-  trigger:
-    #choose your trigger
-  action:
-  - service: homeassistant.update_entity
-    target:
-      entity_id: sensor.gas_stations_within_radius
-
-#convert the gas stations into separate entities once the gas_stations_within_radius is updated.
 - alias: Update gas stations
   trigger:
-  - platform: state
-    entity_id: sensor.gas_stations_within_radius
+    - platform: time_pattern
+      minutes: 5 #every 5 minute past whole
   action:
-  - service: python_script.dutch_gas_prices
+  - service: mqtt.publish
+    data:
+      topic: 'dgp/gas_stations'
+      payload_template: '{"fuel_type":"euro95","radius":5,"latitude":{{ state_attr("person.skons", "latitude") }},"longitude":{{ state_attr("person.skons", "longitude") }}, "publish_all":false}'
+```
 
-#send the cheapest gas station with a google maps link
-- alias: Notify cheapest gas station
+If you want all gas stations within the specified radius to appear in Home Assistant, set publish_all to true. Gas stations with the lowest price will show up as:
+
+```
+sensor.gas_station_[fuel_type]_lowest_price_1
+sensor.gas_station_[fuel_type]_lowest_price_2
+sensor.gas_station_[fuel_type]_lowest_price_3
+```
+
+To get a notification for the lowest gas station price after the latest price has been retreived, use the following automation:
+
+```yaml
+- alias: Notify lowest price gas station
   trigger:
   - platform: state
-    entity_id: gasstation.1
+    entity_id: sensor.gas_station_[fuel_type]_lowest_price_1
   action:
   - service: notify.mobile_app_ios
     data:
       title: Cheapest gas station
-      message: 'Gas costs € {{ state_attr("gasstation.1", "prijs") }} at {{ state_attr("gasstation.1","friendly_name") }}. '
+      message: 'Gas costs € {{ states.sensor.gas_station_[fuel_type]_lowest_price_1.state }} at {{ state_attr("sensor.gas_station_[fuel_type]_lowest_price_1","station_street") }}. '
       data:
-        url: https://www.google.com/maps/search/?api=1&query={{ state_attr("gasstation.1","latitude") }},{{ state_attr("gasstation.1", "longitude") }}
+        url: https://www.google.com/maps/search/?api=1&query={{ state_attr("sensor.gas_station_[fuel_type]_lowest_price_1","latitude") }},{{ state_attr("sensor.gas_station_[fuel_type]_lowest_price_1", "longitude") }}
 ```
 
 ### Gas stations based on id
 
-Get the gas information of a specific gas station. To get the ID of the gas station, go to https://directlease.nl/tankservice/ and click the gas station. Right click on the image and click open in new tab. xxxx.png is the id of your station.
+Get the fuel_type information of a specific gas station. To get the ID of the gas station, go to https://directlease.nl/tankservice/ and click the gas station. Right click on the image and click open in new tab. ####.png is the id of your station.
 
 ```yaml
-sensor:
-- platform: rest
-  name: Gas station
-  scan_interval: 600
-  resource_template: http://homeassistant.local:5035/api/v1/gas_prices/0000
-  method: GET
-  json_attributes:
-    - station_id
-    - euro95
-    - euro98
-    - diesel
-    - lpg
-    - ocr_station
-    - timestamp
-  value_template: >
-    {{ value_json.status }}
+automation:
+- alias: Update gas station
+  trigger:
+    - platform: time_pattern
+      minutes: 5 #every 5 minute past whole
+  action:
+  - service: mqtt.publish
+    data:
+      topic: 'dgp/gas_station'
+      payload: '{"station_id":####,"fuel_type":"euro95"}'
 ```
+
+## ToDo
+
+- Better error reporting for the MQTT client
 
 ## Troubleshooting
 
 - First check in the log of the addon if the addon is up and running
-- Also check for the response the addon is providing in the log file if things don't work out as expected
-- Especially if you do not get any response and there are a lot of gas stations within a certain radius. Review request_duration in the log
-- To check if there should be results, go to http://homeassistant.local:5035/docs and try to query the addon directly
+- Check for log the addon is providing in the log file if things don't work out as expected
 
 ## Known Issues
 
-- There are cases where the installation causes a crash, after a reboot, you can retry the installation
+- Secure MQTT communication is not supported
 - If [Error -3] appears in the logging, and a DNS server is also running within Home Assistant, try to point HA to an external DNS server
 - aarch64 and i386 have not been tested
 - zone.home is initialized after the rest sensor, so the first query after a reboot will fail

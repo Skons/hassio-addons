@@ -21,11 +21,7 @@ RUN \
         libjpeg \
         zlib-dev \
         gcc \
-        libc-dev \
-        linux-headers \
-        libffi-dev \
-        rust \
-        cargo 
+        libc-dev 
 #infra
 RUN \
         mkdir -p /app \
@@ -35,14 +31,14 @@ RUN \
          pip3 install Pillow 
 #requirements
 RUN \
-        pip3 install uvicorn \
-        fastapi \
-        requests \
+        pip3 install requests \
         requests[socks] \
         requests[security] \
         fake_headers \
         pytesseract \
-        geopy
+        geopy \
+        jsonschema \
+        paho-mqtt
 #make it run
 RUN \
         chmod a+x /run.sh
