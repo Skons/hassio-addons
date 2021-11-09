@@ -32,7 +32,7 @@ The password used to connect to the MQTT host
 
 ## Home Assistant Sensor
 
-MQTT is used to automatically have sensors discovered. A sensor per gas station and per fuel_type will appear alongside the sensor.dutch_gas_prices_status. The latter one will provide information about the processing time.
+MQTT is used to automatically have sensors discovered. There will be a sensor per gas station if a specific gas station based on id is configured. All gas stations that appear within a radius will also appear if publish_all is set to true. And a list of lowest priced gas stations per fuel_type will appear if the radius is used. The sensor.dutch_gas_prices_status will always be there and it will provide information about the processing time.
 
 The following fuel_type can be used in the payloads below.
 - euro95
@@ -42,7 +42,7 @@ The following fuel_type can be used in the payloads below.
 
 ### Gas stations based on location and radius
 
-Create an automation that will send a JSON payload to the correct MQTT topic
+Create an automation that will send a JSON payload to the correct MQTT topic. After triggering this automation, all gas stations within the specified radius will be parsed. The radius cannot be larger then 15km.
 
 ```yaml
 automation:
