@@ -32,7 +32,7 @@ The password used to connect to the MQTT host
 
 ## Home Assistant Sensor
 
-MQTT is used to automatically have sensors discovered. There will be a sensor per gas station if a specific gas station based on id is configured. All gas stations that appear within a radius will also appear if publish_all is set to true. And a list of lowest priced gas stations per fuel_type will appear if the radius is used. The sensor.dutch_gas_prices_status will always be there and it will provide information about the processing time.
+MQTT is used to automatically have sensors discovered. A sensor per gas station and per fuel_type will appear alongside the sensor.dutch_gas_prices_status. The latter one will provide information about the processing time.
 
 The following fuel_type can be used in the payloads below.
 - euro95
@@ -42,7 +42,7 @@ The following fuel_type can be used in the payloads below.
 
 ### Gas stations based on location and radius
 
-Create an automation that will send a JSON payload to the correct MQTT topic. After triggering this automation, all gas stations within the specified radius will be parsed. The radius cannot be larger then 15km.
+Create an automation that will send a JSON payload to the correct MQTT topic
 
 ```yaml
 automation:
@@ -54,10 +54,10 @@ automation:
   - service: mqtt.publish
     data:
       topic: 'dgp/gas_stations'
-      payload_template: '{"fuel_type":"euro95","radius":5,"latitude":{{ state_attr("person.skons", "latitude") }},"longitude":{{ state_attr("person.skons", "longitude") }}, "publish_all":false}'
+      payload_template: '{"fuel_type":"euro95","radius":5,"latitude":{{ state_attr("person.skons", "latitude") }},"longitude":{{ state_attr("person.skons", "longitude") }}, "to_publish":3}'
 ```
 
-If you want all gas stations within the specified radius to appear in Home Assistant, set publish_all to true. Gas stations with the lowest price will show up as:
+With to_publish you can determine how many of the discovered gas stations will show up, the default is 3. Gas stations with the lowest price will show up as:
 
 ```
 sensor.gas_station_[fuel_type]_lowest_price_1
@@ -98,6 +98,14 @@ automation:
       payload: '{"station_id":####,"fuel_type":"euro95"}'
 ```
 
+### Friendly name
+The friendly name can be configured by adding "friendly_name_template" to the MQTT payload. The value can contain every attribute you want which allows you to have a friendly name you desire. This could look something like this:
+```
+"friendly_name_template": "[brand] ([station_street])"
+```
+
+Note: the attributes between the sensors from station based on radius and station based on id are different.
+
 ## ToDo
 
 - Better error reporting for the MQTT client
@@ -109,6 +117,7 @@ automation:
 
 ## Known Issues
 
+- On an RPi3 the installation could crash the system, a retry of the installation should fix it
 - Secure MQTT communication is not supported
 - If [Error -3] appears in the logging, and a DNS server is also running within Home Assistant, try to point HA to an external DNS server
 - aarch64 and i386 have not been tested

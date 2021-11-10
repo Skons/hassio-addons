@@ -1,6 +1,6 @@
 # Changelog
 
-## 2021.11.8.1
+## 2021.11.10.1
 
 **Important**: This addon no longer relies on uvicorn and fastapi, it now makes use of MQTT. This chanage is **breaking** please read the docs
 

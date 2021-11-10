@@ -27,6 +27,8 @@ else
     MQTT_PASSWORD=$(bashio::services mqtt "mqtt_password")
 fi
 
+export SUPERVISOR_URL="http://supervisor/core"
+
 #log some info
 bashio::log.info "Log_level: ${LOG_LEVEL}"
 bashio::log.info "mqtt_host: ${MQTT_HOST}"

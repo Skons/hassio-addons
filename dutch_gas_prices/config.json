@@ -1,12 +1,12 @@
 {
   "name": "Dutch gas prices",
-  "version": "2021.11.8.2",
+  "version": "2021.11.10.2",
   "slug": "dutch_gas_prices",
   "description": "Get gas prices from dutch gas stations",
   "url": "https://github.com/Skons/hassio-addons/tree/main/dutch_gas_prices",
   "arch": ["aarch64", "amd64", "armv7", "i386"],
   "startup": "services",
-  "ingress": false,
+  "homeassistant_api": true,
   "services": [
     "mqtt:need"
   ],

@@ -6,6 +6,7 @@ import threading
 import sys
 import datetime
 import threading
+import requests
 from pathlib import Path
 from time import sleep
 from gas_station import gas_station
@@ -32,10 +33,13 @@ gas_stations_schema = {
 		},
 		"longitude": {"type": "number"},
 		"latitude": {"type": "number"},
-		"publish_all": {"type": "boolean"},
+		"to_publish": {
+			"type": "integer",
+			"minimum": 1
+		},
+		"friendly_name_template": {"type": "string"},
 	},
-	"additionalProperties": False,
-	"minProperties": 4
+	"required": ["fuel_type", "radius","longitude","latitude"]
 }
 
 gas_station_schema = {
@@ -46,9 +50,9 @@ gas_station_schema = {
 			"enum": ["euro95","euro98","diesel","autogas"] 
 		},
 		"station_id": {"type": "integer"},
+		"friendly_name_template": {"type": "string"},
 	},
-	"additionalProperties": False,
-	"minProperties": 2
+	"required": ["fuel_type", "station_id"]
 }
 
 def on_connect(client, userdata, flags, rc):
@@ -72,24 +76,27 @@ def on_message(client, userdata, message):
 		dgp_station_status['request_start'] = datetime.datetime.utcnow()
 		dgp_station_status['request_type'] = 'gas_station'
 		logger.info(f"Received payload on topic '{message.topic}'")
+		data = None
 		try:
 			data = json.loads(payload)
 		except Exception as exception_info:
 			logger.error(f"Unable to process payload: '{exception_info}'")
 
-		boolGetStation = True
-		try:
-			validate(instance=data, schema=gas_station_schema)
-		except jsonschema.exceptions.ValidationError as err:
-			boolGetStation = False
-			logger.error(f"unable to validate payload for gas_station with error '{err}'")
+		boolGetStation = False
+		if data is not None:
+			boolGetStation = True
+			try:
+				validate(instance=data, schema=gas_station_schema)
+			except jsonschema.exceptions.ValidationError as err:
+				boolGetStation = False
+				logger.error(f"unable to validate payload for gas_station with error '{err}'")
 
 		if boolGetStation:
 			try:
 				result = gas_station(int(data['station_id']),data['fuel_type'])
 				if 'station_id' in result:
 					dgp_station_status['number_of_stations'] = len(result)
-					t = threading.Thread(target=publish_station, args=(client,result,dgp_station_status))
+					t = threading.Thread(target=publish_station, args=(client,data,result,dgp_station_status))
 					t.start() #do not wait, on_message needs to be free
 				else:
 					logger.warning("There was no gas station in the result")
@@ -101,33 +108,26 @@ def on_message(client, userdata, message):
 		dgp_stations_status['request_start'] = datetime.datetime.utcnow()
 		dgp_stations_status['request_type'] = 'gas_stations'
 		logger.info(f"Received payload on topic '{message.topic}'")
+		data = None
 		try:
 			data = json.loads(payload)
 		except Exception as exception_info:
 			logger.error(f"Unable to process payload: '{exception_info}'")
 
-		boolGetStations = True
-		try:
-			validate(instance=data, schema=gas_stations_schema)
-		except jsonschema.exceptions.ValidationError as err:
-			boolGetStations = False
-			logger.error(f"unable to validate payload for gas_stations with error '{err}'")
+		boolGetStations = False
+		if data is not None:
+			boolGetStations = True
+			try:
+				validate(instance=data, schema=gas_stations_schema)
+			except jsonschema.exceptions.ValidationError as err:
+				boolGetStations = False
+				logger.error(f"unable to validate payload for gas_stations with error '{err}'")
 
 		if boolGetStations:
-			try:
-				result = gas_stations(data['fuel_type'],data['longitude'],data['latitude'],int(data['radius']))
-				if 'gas_stations' in result:
-					if isinstance(result['gas_stations'], list):
-						dgp_stations_status['number_of_stations'] = len(result['gas_stations'])
-						t = threading.Thread(target=publish_stations, args=(client,result['gas_stations'],data['publish_all'],dgp_stations_status))
-						t.start() #do not wait, on_message must be free
-					else:
-						logger.error("There are no gas stations retunred")
-				else:
-					logger.warning("The result of gas stations does not have gas_stations")
-			except Exception as exception_info:
-				logger.error(f"Unable to process payload '{data}' with error '{exception_info}'")
-
+			#start the request, processing and publishing in a seperate request, it could take long
+			t = threading.Thread(target=publish_stations, args=(client,data,dgp_stations_status))
+			t.start() #do not wait, on_message must be free
+			
 	elif message.topic.startswith("homeassistant/sensor/dgp_gasstation/"): #just register the topic where a publish has taken place
 		logger.debug(f"on_message: received the topic '{message.topic}'")
 		is_discovered_topic = message.topic
@@ -137,7 +137,7 @@ def on_message(client, userdata, message):
 	else:
 		logger.info(f"Unkown topic '{message.topic}'")
 
-def publish_station(client,station_info,status=None,lowestprice=0):
+def publish_station(client,station_request,station_info,status=None,lowestprice=0):
 	global is_discovered_topic
 	is_discovered_topic = None
 
@@ -179,31 +179,81 @@ def publish_station(client,station_info,status=None,lowestprice=0):
 
 	client.unsubscribe(topic) #unsubscribe, it is no longer needed
 
-	#send all information
-	result_state = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/state",station_info['price'])
-	result_attrs = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/attr",json.dumps(station_info))
+	#Append friendly_name if there is a template provided
+	friendly_name = None
+	if 'friendly_name_template' in station_request:
+		friendly_name = station_request['friendly_name_template']
+		for key in station_info.keys():
+			friendly_name = friendly_name.replace(f"[{key}]",f"{station_info[key]}")
+		station_info["friendly_name"] = friendly_name
+		
+	#send all information, 
+	#result_state = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/state",station_info['price'])
+	#result_attrs = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/attr",json.dumps(station_info))
+
+	#it is not possible to publish the friendly_name over MQTT, therefore the home assistant api is used
+	#discovery is still done with mqtt
+	supervisor_url = os.environ.get("SUPERVISOR_URL")
+	stationname_in_ha = stationname.replace(" ", "_").lower()
+	sensor_url = f"{supervisor_url}/api/states/sensor.{stationname_in_ha}"
+	supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+	if supervisor_token is None:
+		logger.warning("Unable to find the environment variable SUPERVISOR_TOKEN")
+	elif supervisor_url is None:
+		logger.warning("Unable to find the environment variable SUPERVISOR_URL")
+	else:
+		logger.debug(f"Setting friendly name '{friendly_name}' to url '{sensor_url}' with token '{supervisor_token}'")
+		obj = {}
+		obj["state"] = station_info['price']
+		obj["attributes"] = station_info
+		
+
+		headers = {}
+		headers["Authorization"] = f"Bearer {supervisor_token}"
+		headers["Content-Type"] = "application/json"
+
+		try:
+			r = requests.post(sensor_url, json=obj, headers=headers, timeout=10)
+			logger.info('Status Code  = %s',r.status_code)
+			return r.status_code
+		except requests.exceptions.RequestException as e:  # This is the correct syntax
+			logger.error('%s', e)
+			return ""
 
 	logger.debug(
-		f"publish: Autodiscover '{bool(result_ad.rc == mqtt.MQTT_ERR_SUCCESS)}', "
-		f"State '{bool(result_state.rc == mqtt.MQTT_ERR_SUCCESS)}' and "
-		f"Attributes '{bool(result_attrs.rc == mqtt.MQTT_ERR_SUCCESS)}'"
+		f"publish: Autodiscover '{bool(result_ad.rc == mqtt.MQTT_ERR_SUCCESS)}'"
 	)
 
 	logger.info(f"publishing station_id {station_info['station_id']} done")
+
 	if status is not None:
 		publish_status(client,status)
 
-def publish_stations(client,stations_info,publish_all,status):
-	logger.info("publishing stations to mqtt")
-	counter = 1
-	for item in stations_info:
-		if publish_all is True:
-			publish_station(client,item)
-		if counter < 4:
-			publish_station(mqtt_client,item, None,counter) #publish also for lowest_price_[counter]
-		counter += 1
+def publish_stations(client,station_request,status):
+	try:
+		result = gas_stations(station_request['fuel_type'],station_request['longitude'],station_request['latitude'],int(station_request['radius']))
+		if 'gas_stations' in result:
+			if isinstance(result['gas_stations'], list):
+				status['number_of_stations'] = len(result['gas_stations'])
+				logger.info("publishing stations to mqtt")
+				counter = 1
+				range = 3
+				if "to_publish" in station_request:
+					range = int(station_request["to_publish"])
 
-	logger.info("publishing stations done")
+				logger.debug(f"Publishing the top {range} lowest price gas stations")
+				for item in result['gas_stations']:
+					if counter <= range:
+						publish_station(mqtt_client,station_request,item, None,counter) #publish also for lowest_price_[counter]
+					counter += 1
+
+				logger.info("publishing stations done")
+			else:
+				logger.error("There are no gas stations retunred")
+		else:
+			logger.warning("The result of gas stations does not have gas_stations")
+	except Exception as exception_info:
+		logger.error(f"Unable to process payload '{station_request}' with error '{exception_info}'")
 
 	publish_status(client,status)
 
