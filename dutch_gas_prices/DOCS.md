@@ -65,6 +65,19 @@ sensor.gas_station_[fuel_type]_lowest_price_2
 sensor.gas_station_[fuel_type]_lowest_price_3
 ```
 
+This is what can be used as payload:
+
+```json
+{
+  "fuel_type": "euro95",
+  "radius": 5, #in kilometers, maximum 15
+  "latitude": 6,
+  "longitude": 53,
+  "to_publish": 3 #Optional, default 3,
+  "friendly_name_template": "[brand] ([station_street])" #Optional, change the friendly name by using the attributes
+}
+```
+
 To get a notification for the lowest gas station price after the latest price has been retreived, use the following automation:
 
 ```yaml
@@ -98,10 +111,22 @@ automation:
       payload: '{"station_id":####,"fuel_type":"euro95"}'
 ```
 
+This is what can be used as payload:
+
+```json
+{
+  "fuel_type": "euro95",
+  "station_id": 1,
+  "friendly_name_template": "[brand] ([station_street])" #Optional, change the friendly name by using the attributes
+}
+```
+
 ### Friendly name
 The friendly name can be configured by adding "friendly_name_template" to the MQTT payload. The value can contain every attribute you want which allows you to have a friendly name you desire. This could look something like this:
-```
+
+```json
 "friendly_name_template": "[brand] ([station_street])"
+
 ```
 
 Note: the attributes between the sensors from station based on radius and station based on id are different.
