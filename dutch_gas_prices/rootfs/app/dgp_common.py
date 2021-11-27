@@ -32,7 +32,7 @@ def get_logger(mod_name):
 	logger = logging.getLogger(__name__)
 	loglevel = os.environ.get("LOG_LEVEL", "DEBUG").upper()
 	logging.basicConfig(
-		format='%(asctime)s %(levelname)-8s %(message)s',
+		format='[%(asctime)s] %(levelname)-8s: %(message)s',
 		datefmt='%Y-%m-%d %H:%M:%S',
 		level=loglevel
 	)
