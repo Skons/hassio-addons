@@ -1,5 +1,10 @@
 # Changelog
 
+## 2022.1.2.1
+
+- Interaction with the tankservice website is more reliable
+- Improved OCR, superscript digits are now recognized
+
 ## 2021.11.10.1
 
 **Important**: This addon no longer relies on uvicorn and fastapi, it now makes use of MQTT. This chanage is **breaking** please read the docs

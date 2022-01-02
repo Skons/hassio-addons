@@ -6,8 +6,10 @@ import json
 import time, datetime
 from io import BytesIO
 import re
-from PIL import Image, ImageEnhance, ImageDraw
+from PIL import Image, ImageEnhance, ImageDraw, ImageFilter
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 import math
 import pytesseract
 from fake_headers import Headers
@@ -43,6 +45,10 @@ def gas_station(station_id, fuel = None):
 
 			if word_list:
 				return_value1 = word_list[-1].replace(',', '.')
+				#Sometimes digits get interpreted wrong, correct them here
+				return_value1 = return_value1.replace('°','9')
+				return_value1 = return_value1.replace('?','9')
+				return_value1 = return_value1.replace('%','8')
 				return_value2 = re.sub("[^0-9,.]", "", return_value1)
 				return_value = float(return_value2)
 		except Exception as exception_info:
@@ -56,17 +62,47 @@ def gas_station(station_id, fuel = None):
 		"""
 		headers = Headers(headers=True).generate()
 
-		response = requests.get(url, headers=headers)
+		session = requests.Session()
+		retry = Retry(connect=3, backoff_factor=0.5)
+		adapter = HTTPAdapter(max_retries=retry)
+		session.mount('http://', adapter)
+		session.mount('https://', adapter)
+		response = session.get(url, headers=headers)
 		if response.status_code == 200:
+			resize_number = 4
+			logo_width = 60
+			logo_top = 50
 			img = Image.open(BytesIO(response.content))
-			img2 = img.convert('L') #assign other var, convert does not work otherwise
-			width, height = img2.size
-			newsize = (width*2, height*2)
-			img2 = img2.resize(newsize) #resize for better ocr
-			draw = ImageDraw.Draw(img2)
-			draw.rectangle((((width*2) - 160), 100, (width*2), 0), fill=240) #replace logo, prevent OCR from reading text. The logo is detectable by background color (#TODO)
-			img2.save(f'cache/{station_id}.png')
 
+			#convert the blue to white
+			width = img.size[0] 
+			height = img.size[1] 
+			for i in range(0,width):# process all pixels
+				for j in range(0,height):
+					data = img.getpixel((i,j))
+					#print(data) #(255, 255, 255)
+					if (data[0]==235 and data[1]==245 and data[2]==249):
+						img.putpixel((i,j),(255, 255, 255))
+
+			img2 = img.convert('L') #assign other var, convert does not work otherwise
+
+			#Improve the characteristics of the letters
+			img2 = img2.filter(ImageFilter.SHARPEN)
+
+			#Resize the image
+			width, height = img2.size
+			newsize = (width*resize_number, height*resize_number)
+			img2 = img2.resize(newsize) #resize for better ocr
+
+			#replace logo, prevent OCR from reading text. The logo is detectable by background color (#TODO)
+			draw = ImageDraw.Draw(img2)
+			draw.rectangle((((width*resize_number) - (logo_width*resize_number)), (logo_top*resize_number), (width*resize_number), 0), fill=255) 
+
+			#Improve contrast to have more clear lines. Fiddeling means improvement on some digits and worsening on others
+			img2 = ImageEnhance.Contrast(img2).enhance(1)
+			img2.save(f'cache/{station_id}_edit.png')
+
+			#do the ocr
 			ocr_result = pytesseract.image_to_string(img2, config='--psm 6 --oem 3') #configure tesseract explicit
 			ocr_lines = ocr_result.split("\n")
 			ocr_lines = list(filter(None, ocr_lines)) #Filter out empty values
