@@ -9,6 +9,8 @@ from io import BytesIO
 import re
 from PIL import Image
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 import pytesseract
 from fake_headers import Headers
 from geopy import distance
@@ -50,7 +52,12 @@ def gas_stations(fuel,longitude,latitude,radius):
 		"""
 		headers = Headers(headers=True).generate()
 
-		response = requests.get(url, headers=headers)
+		session = requests.Session()
+		retry = Retry(connect=3, backoff_factor=0.5)
+		adapter = HTTPAdapter(max_retries=retry)
+		session.mount('http://', adapter)
+		session.mount('https://', adapter)
+		response = session.get(url, headers=headers)
 		if response.status_code == 200:
 			data = response.json()
 

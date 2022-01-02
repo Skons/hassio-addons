@@ -1,6 +1,6 @@
 {
   "name": "Dutch gas prices",
-  "version": "2021.11.27.1",
+  "version": "2022.1.2.1",
   "slug": "dutch_gas_prices",
   "description": "Get gas prices from dutch gas stations",
   "url": "https://github.com/Skons/hassio-addons/tree/main/dutch_gas_prices",
@@ -11,13 +11,19 @@
     "mqtt:need"
   ],
   "options": {
-    "log_level": "info"
+    "log_level": "info",
+    "ocr": {
+      "contrast_enhance": 2
+    }
   },
   "schema": {
     "log_level": "list(critical|error|warning|info|debug)",
     "mqtt_host": "str?",
     "mqtt_port":"int?",
     "mqtt_username": "str?",
-    "mqtt_password": "str?"
+    "mqtt_password": "str?",
+    "ocr": {
+      "contrast_enhance":"int?"
+    }
   }
 }
