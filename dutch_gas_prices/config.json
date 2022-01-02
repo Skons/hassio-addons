@@ -11,13 +11,19 @@
     "mqtt:need"
   ],
   "options": {
-    "log_level": "info"
+    "log_level": "info",
+    "ocr": {
+      "contrast_enhance": 2
+    }
   },
   "schema": {
     "log_level": "list(critical|error|warning|info|debug)",
     "mqtt_host": "str?",
     "mqtt_port":"int?",
     "mqtt_username": "str?",
-    "mqtt_password": "str?"
+    "mqtt_password": "str?",
+    "ocr": {
+      "contrast_enhance":"int?"
+    }
   }
 }

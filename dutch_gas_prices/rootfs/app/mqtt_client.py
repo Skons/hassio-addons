@@ -186,7 +186,7 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		for key in station_info.keys():
 			friendly_name = friendly_name.replace(f"[{key}]",f"{station_info[key]}")
 		station_info["friendly_name"] = friendly_name
-		
+
 	#send all information, 
 	#result_state = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/state",station_info['price'])
 	#result_attrs = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/attr",json.dumps(station_info))
@@ -197,6 +197,7 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 	stationname_in_ha = stationname.replace(" ", "_").lower()
 	sensor_url = f"{supervisor_url}/api/states/sensor.{stationname_in_ha}"
 	supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
+	station_info['icon'] = "mdi:fuel" #icon is lost with direct publishing, resend it
 	if supervisor_token is None:
 		logger.warning("Unable to find the environment variable SUPERVISOR_TOKEN")
 	elif supervisor_url is None:
@@ -206,7 +207,6 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		obj = {}
 		obj["state"] = station_info['price']
 		obj["attributes"] = station_info
-		
 
 		headers = {}
 		headers["Authorization"] = f"Bearer {supervisor_token}"
@@ -295,6 +295,7 @@ def publish_status(client,status):
 	processing_end = datetime.datetime.utcnow()
 	status['processing_time'] = round(processing_end.timestamp() - status['request_start'].timestamp(),2)
 	status['request_start'] = str(status['request_start'].replace(tzinfo=datetime.timezone.utc).isoformat())
+	status['icon'] = "mdi:fuel"
 
 	#send all information
 	result_state = mqtt_client.publish(f"homeassistant/sensor/dgp/status/state",status['processing_time'])
@@ -320,6 +321,7 @@ def start_mqtt_client(mqtthost, mqttport, mqttusername=None, mqttpassword=None):
 	mqtt_client.on_disconnect = on_disconnect
 	mqtt_client.connect(host=mqtthost, port=int(mqttport))
 	mqtt_client.loop_forever()
+
 if __name__ == "__main__":
 	#if called upon directly, use mqtt_client.py [mqtt_server] [mqtt_port] or mqtt_client.py [mqtt_server] [mqtt_port] [mqtt_username] [mqtt_password]
 	if len(sys.argv) > 3:

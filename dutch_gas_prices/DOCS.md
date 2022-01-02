@@ -2,7 +2,18 @@
 
 Get information about fuel prices in the netherlands
 
-## Configuration Options
+## Configuration
+
+Add-on configuration:
+
+```yaml
+mqtt_host: homeassistant.local
+mqtt_port: 1883
+mqtt_username: username
+mqtt_password: password
+ocr:
+  contrast_enhance: 2
+```
 
 ### Option: `log_level`
 
@@ -14,21 +25,25 @@ The `log_level` option controls the level of logging. Possible values are:
 - info
 - debug
 
-### Option: `mqtt_host`
+### Option: `mqtt_host` (optional)
 
 The DNS or IP address of your MQTT host. If you are running mosquitto on HA, you do not need to configure this option.
 
-### Option: `mqtt_port`
+### Option: `mqtt_port` (optional)
 
 The port number of your MQTT host. If you are running mosquitto on HA, you do not need to configure this option.
 
-### Option: `mqtt_username`
+### Option: `mqtt_username` (optional)
 
 The username used to connect to the MQTT host
 
-### Option: `mqtt_password`
+### Option: `mqtt_password` (optional)
 
 The password used to connect to the MQTT host
+
+### Option: `ocr.contrast_enhance` (optional)
+
+While preprocessing the fuel station image, the contrast is enhanced. By default this is done by a factor of 2. Results may vary upon changing this value. If tesseract OCR is not performing, change this value to see if better results are achieved. This option changes [ImageEnhance](https://pillow.readthedocs.io/en/stable/reference/ImageEnhance.html) of the PIL addin 
 
 ## Home Assistant Sensor
 

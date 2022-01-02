@@ -15,6 +15,7 @@ import pytesseract
 from fake_headers import Headers
 from dgp_common import _read_cached_jsonfile
 from dgp_common import get_logger
+from dgp_common import _read_dockerconfig
 
 # Settings
 # Something like lru_cache would be nice but has no time expiring support, so custom json storage
@@ -27,6 +28,7 @@ def gas_station(station_id, fuel = None):
 	Main Dutch Gas prices API Function
 	"""
 	url = f'https://tankservice.app-it-up.com/Tankservice/v1/places/{station_id}.png'
+	addon_config = _read_dockerconfig()
 
 	def _search_value(lines, search_value):
 		"""
@@ -46,9 +48,12 @@ def gas_station(station_id, fuel = None):
 			if word_list:
 				return_value1 = word_list[-1].replace(',', '.')
 				#Sometimes digits get interpreted wrong, correct them here
+				return_value1 = return_value1.replace('..','.')
 				return_value1 = return_value1.replace('°','9')
 				return_value1 = return_value1.replace('?','9')
+				return_value1 = return_value1.replace('®','9')
 				return_value1 = return_value1.replace('%','8')
+				print(return_value1)
 				return_value2 = re.sub("[^0-9,.]", "", return_value1)
 				return_value = float(return_value2)
 		except Exception as exception_info:
@@ -73,6 +78,7 @@ def gas_station(station_id, fuel = None):
 			logo_width = 60
 			logo_top = 50
 			img = Image.open(BytesIO(response.content))
+			img.save(f'cache/{station_id}.png')
 
 			#convert the blue to white
 			width = img.size[0] 
@@ -99,7 +105,13 @@ def gas_station(station_id, fuel = None):
 			draw.rectangle((((width*resize_number) - (logo_width*resize_number)), (logo_top*resize_number), (width*resize_number), 0), fill=255) 
 
 			#Improve contrast to have more clear lines. Fiddeling means improvement on some digits and worsening on others
-			img2 = ImageEnhance.Contrast(img2).enhance(1)
+			contrast_enhance = 2
+			if 'ocr' in addon_config:
+				if 'contrast_enhance' in addon_config['ocr']:
+					if type(addon_config['ocr']['contrast_enhance']) == int:
+						contrast_enhance = addon_config['ocr']['contrast_enhance']
+
+			img2 = ImageEnhance.Contrast(img2).enhance(contrast_enhance)
 			img2.save(f'cache/{station_id}_edit.png')
 
 			#do the ocr
