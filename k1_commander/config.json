@@ -1,0 +1,29 @@
+{
+  "name": "K1 Commander",
+  "version": "2022.1.9.1",
+  "slug": "k1_commander",
+  "description": "Run ELRO Connects as a Hassio Addon",
+  "url": "https://github.com/Skons/hassio-addons/tree/main/k1_commander",
+  "arch": ["aarch64", "amd64", "armv7", "i386"],
+  "startup": "services",
+  "homeassistant_api": true,
+  "services": [
+    "mqtt:need"
+  ],
+  "options": {
+    "log_level": "info",
+    "k1_hostname":"",
+    "k1_id": "ST_",
+    "mqtt_base_topic": ""
+  },
+  "schema": {
+    "k1_hostname": "str",
+    "k1_id": "str",
+    "log_level": "list(critical|error|warning|info|debug)",
+    "mqtt_host": "str?",
+    "mqtt_port":"int?",
+    "mqtt_username": "str?",
+    "mqtt_password": "str?",
+    "mqtt_base_topic": "str"
+  }
+}
