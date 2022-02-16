@@ -18,14 +18,55 @@ from dgp_common import get_logger
 from dgp_common import _read_dockerconfig
 
 # Settings
-# Something like lru_cache would be nice but has no time expiring support, so custom json storage
 CACHE_TIME = 3600
+CACHE_TIME_STATIONS = 86400 #24h, could be longer, stations don't come and go very often
 
 logger = get_logger(__name__)
 
-def gas_station(station_id, fuel = None):
+def get_all_stations(fuel):
 	"""
-	Main Dutch Gas prices API Function
+	Get all the gas stations from the tankservice app
+	:param fuel: The fuel type to get the stations for
+	"""
+	url = f'https://tankservice.app-it-up.com/Tankservice/v1/places?fmt=web&fuel={fuel}'
+
+	def _write_allstationdata():
+		"""
+		Query the api and cache the results to a json file
+		"""
+		headers = Headers(headers=True).generate()
+
+		session = requests.Session()
+		retry = Retry(connect=3, backoff_factor=0.5)
+		adapter = HTTPAdapter(max_retries=retry)
+		session.mount('http://', adapter)
+		session.mount('https://', adapter)
+		response = session.get(url, headers=headers)
+		if response.status_code == 200:
+			data = response.json()
+
+			with open('cache/' + f'{fuel}.json', 'w') as outfile:
+					json.dump(data, outfile)
+		else:
+			logger.error(f"_write_stationdata: statuscode '{response.status_code}'")
+			logger.error(f"_write_stationdata: Used header '{headers}'")
+			ip_addr = requests.get('https://api.ipify.org').text
+			logger.error(f"_write_stationdata: Used IP '{ip_addr}'")
+			logger.error(f"_write_stationdata: Response text '{response.text}'")
+			data = {}
+		return data
+
+	stationdata = _read_cached_jsonfile('cache/' + f'{fuel}.json', CACHE_TIME_STATIONS)
+	if stationdata == False:
+		logger.debug(f"gas_stations: Fuel '{fuel}' new request")
+		stationdata = _write_allstationdata()
+	return stationdata
+
+def gas_station(station_id, fuel):
+	"""
+	Get the fuel price of the specified station
+	:param station_id: The id of the station to get the fuel price for
+	:param fuel: The fuel type to get the gas price for
 	"""
 	url = f'https://tankservice.app-it-up.com/Tankservice/v1/places/{station_id}.png'
 	addon_config = _read_dockerconfig()
@@ -178,29 +219,42 @@ def gas_station(station_id, fuel = None):
 		logger.debug(f"Station id '{station_id}' new request")
 		return_value = _write_stationdata(station_id)
 
+	stationdata = get_all_stations(fuel)
+	stationinfo = None
+	for station in stationdata:
+		if station['id'] == int(station_id):
+			stationinfo = {}
+			stationinfo['brand'] = station['brand']
+			stationinfo['name'] = station['name']
+			station_lat = str(station['lat'])
+			stationinfo['latitude'] = float(station_lat[:2] + "." + station_lat[2:])#quick and dirty conversion of lat lon to float, should not be done this way
+			station_lon = str(station['lng'])
+			stationinfo['longitude'] = float(station_lon[:1] + "." + station_lon[1:])
+			stationinfo['fuel'] = fuel
+			break
+
 	return_value['processing_start'] = request_start.replace(tzinfo=datetime.timezone.utc).isoformat()
 	processing_end = datetime.datetime.utcnow()
 	return_value['processing_time'] = round(processing_end.timestamp() - request_start.timestamp(),2)
-	#Only return the fuel that was requested
-	if fuel:
-		newdata = {
-			'station_id': return_value['station_id'],
-			'price': return_value[fuel],
-			'fuel_type': fuel,
-			'station_street' : return_value['station_street'],
-			'station_address' : return_value['station_address'],
-			'timestamp' : return_value['timestamp'],
-			'status' : return_value['status'],
-			'processing_start': return_value['processing_start'],
-			'processing_time': return_value['processing_time']
-		}
-		return_value = newdata
+
+	newdata = {
+		'station_id': return_value['station_id'],
+		'price': return_value[fuel],
+		'fuel_type': fuel,
+		'station_street' : return_value['station_street'],
+		'station_address' : return_value['station_address'],
+		'timestamp' : return_value['timestamp'],
+		'status' : return_value['status'],
+		'processing_start': return_value['processing_start'],
+		'processing_time': return_value['processing_time']
+	}
+	#merge the station information
+	return_value = {**newdata, **stationinfo}
+
 	logger.debug(f"station: return value '{return_value}'")
+
 	return return_value
 
 if __name__ == '__main__':
 	#if called upon directly, use gas_station.py [stationid] or gas_station.py [station_id] [fuel_type]
-	if len(sys.argv) > 2:
-		gas_station(str(sys.argv[1]),str(sys.argv[2])) 
-	else:
-		gas_station(str(sys.argv[1]))
+	gas_station(str(sys.argv[1]),str(sys.argv[2])) 

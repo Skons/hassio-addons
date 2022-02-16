@@ -47,9 +47,9 @@ While preprocessing the fuel station image, the contrast is enhanced. By default
 
 ## Home Assistant Sensor
 
-MQTT is used to automatically have sensors discovered. A sensor per gas station and per fuel_type will appear alongside the sensor.dutch_gas_prices_status. The latter one will provide information about the processing time.
+MQTT is used to automatically have sensors discovered. A sensor per gas station and per `fuel_type` will appear alongside the sensor.dutch_gas_prices_status. The latter one will provide information about the processing time.
 
-The following fuel_type can be used in the payloads below.
+The following `fuel_type` can be used in the payloads below.
 - euro95
 - euro98
 - diesel
@@ -57,7 +57,7 @@ The following fuel_type can be used in the payloads below.
 
 ### Gas stations based on location and radius
 
-Create an automation that will send a JSON payload to the correct MQTT topic
+Create an automation that will send a JSON payload to the correct MQTT topic. Replace `person.skons` with an entity that has latitude and longitude attributes.
 
 ```yaml
 automation:
@@ -72,7 +72,7 @@ automation:
       payload_template: '{"fuel_type":"euro95","radius":5,"latitude":{{ state_attr("person.skons", "latitude") }},"longitude":{{ state_attr("person.skons", "longitude") }}, "to_publish":3}'
 ```
 
-With to_publish you can determine how many of the discovered gas stations will show up, the default is 3. Gas stations with the lowest price will show up as:
+With `to_publish` you can determine how many of the cheapest discovered gas stations will show up, the default is 3. Gas stations with the lowest price will show up as:
 
 ```
 sensor.gas_station_[fuel_type]_lowest_price_1
@@ -89,11 +89,11 @@ This is what can be used as payload:
   "latitude": 6,
   "longitude": 53,
   "to_publish": 3 #Optional, default 3,
-  "friendly_name_template": "[brand] ([station_street])" #Optional, change the friendly name by using the attributes
+  "friendly_name_template": "[brand] ([station_street])" #Optional, change the friendly name by using the attributes of the sensor
 }
 ```
 
-To get a notification for the lowest gas station price after the latest price has been retreived, use the following automation:
+To get a notification for the lowest gas station price after the latest price has been retreived, use the following automation. Replace `[fuel_type]` with your fuel type:
 
 ```yaml
 - alias: Notify lowest price gas station
@@ -111,7 +111,7 @@ To get a notification for the lowest gas station price after the latest price ha
 
 ### Gas stations based on id
 
-Get the fuel_type information of a specific gas station. To get the ID of the gas station, go to https://directlease.nl/tankservice/ and click the gas station. Right click on the image and click open in new tab. ####.png is the id of your station.
+Get the `fuel_type` price information of a specific gas station. To get the ID of the gas station, go to https://directlease.nl/tankservice/ and click the gas station. Right click on the image and click open in new tab. `####.png` is the id of your station.
 
 ```yaml
 automation:
@@ -132,12 +132,12 @@ This is what can be used as payload:
 {
   "fuel_type": "euro95",
   "station_id": 1,
-  "friendly_name_template": "[brand] ([station_street])" #Optional, change the friendly name by using the attributes
+  "friendly_name_template": "[brand] ([station_street])" #Optional, change the friendly name by using the attributes of the sensor
 }
 ```
 
 ### Friendly name
-The friendly name can be configured by adding "friendly_name_template" to the MQTT payload. The value can contain every attribute you want which allows you to have a friendly name you desire. This could look something like this:
+The friendly name can be configured by adding `friendly_name_template` to the MQTT payload. The value can contain every attribute you want which allows you to have a friendly name you desire. This could look something like below. Please note that not all brands are known.:
 
 ```json
 "friendly_name_template": "[brand] ([station_street])"
@@ -153,7 +153,8 @@ Note: the attributes between the sensors from station based on radius and statio
 ## Troubleshooting
 
 - First check in the log of the addon if the addon is up and running
-- Check for log the addon is providing in the log file if things don't work out as expected
+- Enable debug logging to see if there is additional information that could help you fix the problem
+- Check for log the addon is providing in the log file if things don't work out as expected. If debug is enabled, please redact the username and password information in the log.
 
 ## Known Issues
 
@@ -161,4 +162,3 @@ Note: the attributes between the sensors from station based on radius and statio
 - Secure MQTT communication is not supported
 - If [Error -3] appears in the logging, and a DNS server is also running within Home Assistant, try to point HA to an external DNS server
 - aarch64 and i386 have not been tested
-- zone.home is initialized after the rest sensor, so the first query after a reboot will fail
