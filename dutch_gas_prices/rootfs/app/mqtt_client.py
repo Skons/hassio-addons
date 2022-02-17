@@ -56,11 +56,24 @@ gas_station_schema = {
 }
 
 def on_connect(client, userdata, flags, rc):
+	"""
+	This function handles the MQTT client connect
+	:param client: The MQTT client
+	:param userdata: The userdata is user defined data which isn’t normally used.
+	:param flags: Flags for paho mqtt
+	:param rc: The response code
+	"""
 	logger.info("Connected with result code {0}".format(str(rc)))
 	mqtt_topics = [("dgp/gas_station",0),("dgp/gas_stations",0)]
 	client.subscribe(mqtt_topics)
 
 def on_disconnect(client, userdata, rc):
+	"""
+	This function handles the MQTT client disconnects
+	:param client: The MQTT client
+	:param userdata: The userdata is user defined data which isn’t normally used.
+	:param rc: The response code
+	"""
 	if rc != 0:
 		timeout = 15
 		logger.error(f"mqtt client lost connection. Will try to reconnect once in {timeout}s.")
@@ -69,6 +82,12 @@ def on_disconnect(client, userdata, rc):
 		client.reconnect()
 
 def on_message(client, userdata, message):
+	"""
+	This function handles the MQTT messages
+	:param client: The MQTT client
+	:param userdata: The userdata is user defined data which isn’t normally used.
+	:param message: The message published
+	"""
 	global is_discovered_topic,is_discovered_status_topic
 	payload = message.payload.decode("utf-8","ignore")
 	if message.topic == 'dgp/gas_station': #process a single gas station
@@ -80,7 +99,7 @@ def on_message(client, userdata, message):
 		try:
 			data = json.loads(payload)
 		except Exception as exception_info:
-			logger.error(f"Unable to process payload: '{exception_info}'")
+			logger.error(f"Unable to process payload '{payload}' with error: '{exception_info}'")
 
 		boolGetStation = False
 		if data is not None:
@@ -89,7 +108,7 @@ def on_message(client, userdata, message):
 				validate(instance=data, schema=gas_station_schema)
 			except jsonschema.exceptions.ValidationError as err:
 				boolGetStation = False
-				logger.error(f"unable to validate payload for gas_station with error '{err}'")
+				logger.error(f"Unable to validate payload '{payload}' for gas_station with error: '{err}'")
 
 		if boolGetStation:
 			try:
@@ -97,11 +116,11 @@ def on_message(client, userdata, message):
 				if 'station_id' in result:
 					dgp_station_status['number_of_stations'] = len(result)
 					t = threading.Thread(target=publish_station, args=(client,data,result,dgp_station_status))
-					t.start() #do not wait, on_message needs to be free
+					t.start() #start multithreading of the station processing, on_message needs to be free
 				else:
-					logger.warning("There was no gas station in the result")
+					logger.warning(f"Gas station with id '{data['station_id']}' was not found")
 			except Exception as exception_info:
-				logger.error(f"Unable to process stationid '{data['station_id']}' with fuel_type '{data['fuel_type']}' '{exception_info}'")
+				logger.error(f"Unable to process stationid '{data['station_id']}' with fuel_type '{data['fuel_type']}', error: '{exception_info}'")
 
 	elif message.topic == 'dgp/gas_stations': #process gas stations within a radius
 		dgp_stations_status = {}
@@ -112,7 +131,7 @@ def on_message(client, userdata, message):
 		try:
 			data = json.loads(payload)
 		except Exception as exception_info:
-			logger.error(f"Unable to process payload: '{exception_info}'")
+			logger.error(f"Unable to process payload '{payload}' with error: '{exception_info}'")
 
 		boolGetStations = False
 		if data is not None:
@@ -121,7 +140,7 @@ def on_message(client, userdata, message):
 				validate(instance=data, schema=gas_stations_schema)
 			except jsonschema.exceptions.ValidationError as err:
 				boolGetStations = False
-				logger.error(f"unable to validate payload for gas_stations with error '{err}'")
+				logger.error(f"unable to validate payload '{payload}' for gas_stations with error: '{err}'")
 
 		if boolGetStations:
 			#start the request, processing and publishing in a seperate request, it could take long
@@ -138,15 +157,25 @@ def on_message(client, userdata, message):
 		logger.info(f"Unkown topic '{message.topic}'")
 
 def publish_station(client,station_request,station_info,status=None,lowestprice=0):
+	"""
+	publish the station to home assistant
+	:param client: The MQTT client
+	:param station_request: The request used to get the station data
+	:param station_info: The station from gas_station.py or gas_stations.py
+	:param status: status object used for publis_status()
+	:param lowestprice: if is 0, the station will be published. Any other number will publish the number of lowest price stations
+	"""
 	global is_discovered_topic
 	is_discovered_topic = None
 
 	logger.info(f"publishing station_id {station_info['station_id']} to mqtt")
 
 	stationtopic = f"{station_info['station_id']}_{station_info['fuel_type']}"
+	sensorname = f"gas_station_{station_info['station_id']}_{station_info['fuel_type']}"
 	stationname = f"Gas station {station_info['station_street']} {station_info['fuel_type']}"
 	if lowestprice > 0:
 		stationtopic = f"{station_info['fuel_type']}_lowestprice_{lowestprice}"
+		sensorname = f"gas_station_{station_info['fuel_type']}_lowest_price_{lowestprice}"
 		stationname = f"Gas station {station_info['fuel_type']} lowest price {lowestprice}"
 
 	topic = f"homeassistant/sensor/dgp_gasstation/{stationtopic}/config"
@@ -180,12 +209,13 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 	client.unsubscribe(topic) #unsubscribe, it is no longer needed
 
 	#Append friendly_name if there is a template provided
-	friendly_name = None
+	friendly_name = "[brand] ([station_street])"
 	if 'friendly_name_template' in station_request:
 		friendly_name = station_request['friendly_name_template']
-		for key in station_info.keys():
-			friendly_name = friendly_name.replace(f"[{key}]",f"{station_info[key]}")
-		station_info["friendly_name"] = friendly_name
+
+	for key in station_info.keys():
+		friendly_name = friendly_name.replace(f"[{key}]",f"{station_info[key]}")
+	station_info["friendly_name"] = friendly_name
 
 	#send all information, 
 	#result_state = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/state",station_info['price'])
@@ -194,16 +224,16 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 	#it is not possible to publish the friendly_name over MQTT, therefore the home assistant api is used
 	#discovery is still done with mqtt
 	supervisor_url = os.environ.get("SUPERVISOR_URL")
-	stationname_in_ha = stationname.replace(" ", "_").lower()
-	sensor_url = f"{supervisor_url}/api/states/sensor.{stationname_in_ha}"
+	sensor_url = f"{supervisor_url}/api/states/sensor.{sensorname}"
 	supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
 	station_info['icon'] = "mdi:fuel" #icon is lost with direct publishing, resend it
+	station_info['unit_of_measurement'] = "€" #unit of measurement is lost with direct publishing, resend it
 	if supervisor_token is None:
 		logger.warning("Unable to find the environment variable SUPERVISOR_TOKEN")
 	elif supervisor_url is None:
 		logger.warning("Unable to find the environment variable SUPERVISOR_URL")
 	else:
-		logger.debug(f"Setting friendly name '{friendly_name}' to url '{sensor_url}' with token '{supervisor_token}'")
+		logger.debug(f"Setting sensor values to url '{sensor_url}' with token")
 		obj = {}
 		obj["state"] = station_info['price']
 		obj["attributes"] = station_info
@@ -230,6 +260,12 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		publish_status(client,status)
 
 def publish_stations(client,station_request,status):
+	"""
+	publish all stations to home assistant
+	:param client: The MQTT client
+	:param station_request: The request used to get the stations data
+	:param status: status object used for publis_status()
+	"""
 	try:
 		result = gas_stations(station_request['fuel_type'],station_request['longitude'],station_request['latitude'],int(station_request['radius']))
 		if 'gas_stations' in result:
@@ -249,15 +285,20 @@ def publish_stations(client,station_request,status):
 
 				logger.info("publishing stations done")
 			else:
-				logger.error("There are no gas stations retunred")
+				logger.error(f"No gas stations where found in the longitude '{station_request['longitude']}' and latitude '{station_request['latitude']}'")
 		else:
-			logger.warning("The result of gas stations does not have gas_stations")
+			logger.warning("The result of gas stations does not have the property gas_stations")
 	except Exception as exception_info:
-		logger.error(f"Unable to process payload '{station_request}' with error '{exception_info}'")
+		logger.error(f"Unable to process payload '{station_request}' with error: '{exception_info}'")
 
 	publish_status(client,status)
 
 def publish_status(client,status):
+	"""
+	publish the status of the request to home assistant as a sensor
+	:param client: The MQTT client
+	:param status: status object
+	"""
 	global is_discovered_status_topic
 	is_discovered_status_topic = None
 
@@ -310,6 +351,13 @@ def publish_status(client,status):
 	logger.info("publishing status done")
 
 def start_mqtt_client(mqtthost, mqttport, mqttusername=None, mqttpassword=None):
+	"""
+	Initialize the MQTT client
+	:param mqtthost: The host or ip of the MQTT instance
+	:param mqttport: The port of the MQTT instance
+	:param mqttusername: The username for authentication
+	:param mqttpassword: The password for authentication
+	"""
 	global mqtt_client
 
 	logger.info("Connecting mqtt")

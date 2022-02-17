@@ -1,5 +1,17 @@
 # Changelog
 
+## 2022.2.16.1
+
+**Important**: The sensor name for a single gas station is changed to its id instead of the street address
+
+- Single gas stations sensor name is changed to the id of the station
+- Unit of measurement is now always set
+- Sensor attributes for a single station is now the same as for a within radius request
+- Friendly name for single gas stations is now default "[brand] ([station_street])"
+- Error reporting updates
+- Documentation improvements
+
+
 ## 2022.1.2.1
 
 - Interaction with the tankservice website is more reliable
