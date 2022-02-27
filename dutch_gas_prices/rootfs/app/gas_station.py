@@ -4,6 +4,7 @@ Dutch Gas prices API Module
 import sys
 import json
 import time, datetime
+import logging
 from io import BytesIO
 import re
 from PIL import Image, ImageEnhance, ImageDraw, ImageFilter
@@ -22,6 +23,7 @@ CACHE_TIME = 3600
 CACHE_TIME_STATIONS = 86400 #24h, could be longer, stations don't come and go very often
 
 logger = get_logger(__name__)
+logging.getLogger('PIL').setLevel(logging.WARNING)
 
 def get_all_stations(fuel):
 	"""
@@ -48,17 +50,17 @@ def get_all_stations(fuel):
 			with open('cache/' + f'{fuel}.json', 'w') as outfile:
 					json.dump(data, outfile)
 		else:
-			logger.error(f"_write_stationdata: statuscode '{response.status_code}'")
-			logger.error(f"_write_stationdata: Used header '{headers}'")
+			logger.error(f"_write_allstationdata: statuscode '{response.status_code}'")
+			logger.error(f"_write_allstationdata: Used header '{headers}'")
 			ip_addr = requests.get('https://api.ipify.org').text
-			logger.error(f"_write_stationdata: Used IP '{ip_addr}'")
-			logger.error(f"_write_stationdata: Response text '{response.text}'")
+			logger.error(f"_write_allstationdata: Used IP '{ip_addr}'")
+			logger.error(f"_write_allstationdata: Response text '{response.text}'")
 			data = {}
 		return data
 
 	stationdata = _read_cached_jsonfile('cache/' + f'{fuel}.json', CACHE_TIME_STATIONS)
 	if stationdata == False:
-		logger.debug(f"gas_stations: Fuel '{fuel}' new request")
+		logger.debug(f"gas_station: Fuel '{fuel}' new request")
 		stationdata = _write_allstationdata()
 	return stationdata
 
@@ -94,7 +96,7 @@ def gas_station(station_id, fuel):
 				return_value1 = return_value1.replace('?','9')
 				return_value1 = return_value1.replace('®','9')
 				return_value1 = return_value1.replace('%','8')
-				print(return_value1)
+				#print(return_value1)
 				return_value2 = re.sub("[^0-9,.]", "", return_value1)
 				return_value = float(return_value2)
 		except Exception as exception_info:
@@ -194,11 +196,11 @@ def gas_station(station_id, fuel):
 			with open('cache/' + f'{station_id}.json', 'w') as outfile:
 				json.dump(data, outfile)
 		else:
-			logger.error(f"_write_stationdata: statuscode '{response.status_code}'")
-			logger.error(f"_write_stationdata: Used header '{headers}'")
+			logger.error(f"_write_stationdata '{station_id}': statuscode '{response.status_code}'")
+			logger.error(f"_write_stationdata '{station_id}': Used header '{headers}'")
 			ip_addr = requests.get('https://api.ipify.org').text
-			logger.error(f"_write_stationdata: Used IP '{ip_addr}'")
-			logger.error(f"_write_stationdata: Response text '{response.text}'")
+			logger.error(f"_write_stationdata '{station_id}': Used IP '{ip_addr}'")
+			logger.error(f"_write_stationdata '{station_id}': Response text '{response.text}'")
 			data = {
 				'station_id': None,
 				'euro95': None,
@@ -216,7 +218,7 @@ def gas_station(station_id, fuel):
 	request_start =  datetime.datetime.utcnow()
 	return_value = _read_cached_jsonfile('cache/' + f'{station_id}.json', CACHE_TIME)
 	if return_value == False:
-		logger.debug(f"Station id '{station_id}' new request")
+		logger.debug(f"station: Station id '{station_id}' new request")
 		return_value = _write_stationdata(station_id)
 
 	stationdata = get_all_stations(fuel)
@@ -237,21 +239,29 @@ def gas_station(station_id, fuel):
 	processing_end = datetime.datetime.utcnow()
 	return_value['processing_time'] = round(processing_end.timestamp() - request_start.timestamp(),2)
 
-	newdata = {
-		'station_id': return_value['station_id'],
-		'price': return_value[fuel],
-		'fuel_type': fuel,
-		'station_street' : return_value['station_street'],
-		'station_address' : return_value['station_address'],
-		'timestamp' : return_value['timestamp'],
-		'status' : return_value['status'],
-		'processing_start': return_value['processing_start'],
-		'processing_time': return_value['processing_time']
-	}
-	#merge the station information
-	return_value = {**newdata, **stationinfo}
+	if return_value['station_id'] is not None:
+		price = return_value[fuel]
+		status = return_value['status']
+		if price > 10:
+			price = None
+			if status == 'Ok':
+				status = "Could not read price"
 
-	logger.debug(f"station: return value '{return_value}'")
+		newdata = {
+			'station_id': return_value['station_id'],
+			'price': price,
+			'fuel_type': fuel,
+			'station_street' : return_value['station_street'],
+			'station_address' : return_value['station_address'],
+			'timestamp' : return_value['timestamp'],
+			'status' : status,
+			'processing_start': return_value['processing_start'],
+			'processing_time': return_value['processing_time']
+		}
+		#merge the station information
+		return_value = {**newdata, **stationinfo}
+
+	logger.debug(f"station '{station_id}': return value '{return_value}'")
 
 	return return_value
 

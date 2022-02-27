@@ -161,4 +161,4 @@ Note: the attributes between the sensors from station based on radius and statio
 - On an RPi3 the installation could crash the system, a retry of the installation should fix it
 - Secure MQTT communication is not supported
 - If [Error -3] appears in the logging, and a DNS server is also running within Home Assistant, try to point HA to an external DNS server
-- aarch64 and i386 have not been tested
+- i386 has not been tested
