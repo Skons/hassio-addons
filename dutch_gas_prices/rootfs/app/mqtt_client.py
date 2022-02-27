@@ -94,7 +94,7 @@ def on_message(client, userdata, message):
 		dgp_station_status = {}
 		dgp_station_status['request_start'] = datetime.datetime.utcnow()
 		dgp_station_status['request_type'] = 'gas_station'
-		logger.info(f"Received payload on topic '{message.topic}'")
+		logger.info(f"Received payload '{payload}' on topic '{message.topic}'")
 		data = None
 		try:
 			data = json.loads(payload)
@@ -126,7 +126,7 @@ def on_message(client, userdata, message):
 		dgp_stations_status = {}
 		dgp_stations_status['request_start'] = datetime.datetime.utcnow()
 		dgp_stations_status['request_type'] = 'gas_stations'
-		logger.info(f"Received payload on topic '{message.topic}'")
+		logger.info(f"Received payload '{payload}' on topic '{message.topic}'")
 		data = None
 		try:
 			data = json.loads(payload)
@@ -201,9 +201,9 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 	while topic != is_discovered_topic:
 		sleep(1) #do not stress the CPU
 		counter += 1
-		logger.debug(f"publish: Waiting for discovery on topic '{topic}'")
+		logger.debug(f"publish_station: Waiting for discovery on topic '{topic}'")
 		if counter > 5:
-			logger.warning(f"publish: the sensor has not shown up in the topic '{topic}', the state can show up as 'unkown'")
+			logger.warning(f"publish_station: the sensor has not shown up in the topic '{topic}', the state can show up as 'unkown'")
 			break
 
 	client.unsubscribe(topic) #unsubscribe, it is no longer needed
@@ -229,11 +229,11 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 	station_info['icon'] = "mdi:fuel" #icon is lost with direct publishing, resend it
 	station_info['unit_of_measurement'] = "€" #unit of measurement is lost with direct publishing, resend it
 	if supervisor_token is None:
-		logger.warning("Unable to find the environment variable SUPERVISOR_TOKEN")
+		logger.warning("publish_station: Unable to find the environment variable SUPERVISOR_TOKEN")
 	elif supervisor_url is None:
-		logger.warning("Unable to find the environment variable SUPERVISOR_URL")
+		logger.warning("publish_station: Unable to find the environment variable SUPERVISOR_URL")
 	else:
-		logger.debug(f"Setting sensor values to url '{sensor_url}' with token")
+		logger.debug(f"publish_station: Setting sensor values to url '{sensor_url}' with token")
 		obj = {}
 		obj["state"] = station_info['price']
 		obj["attributes"] = station_info
@@ -244,14 +244,14 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 
 		try:
 			r = requests.post(sensor_url, json=obj, headers=headers, timeout=10)
-			logger.info('Status Code  = %s',r.status_code)
+			logger.debug('publish_station: Status Code  = %s',r.status_code)
 			return r.status_code
 		except requests.exceptions.RequestException as e:  # This is the correct syntax
 			logger.error('%s', e)
 			return ""
 
 	logger.debug(
-		f"publish: Autodiscover '{bool(result_ad.rc == mqtt.MQTT_ERR_SUCCESS)}'"
+		f"publish_station: Autodiscover '{bool(result_ad.rc == mqtt.MQTT_ERR_SUCCESS)}'"
 	)
 
 	logger.info(f"publishing station_id {station_info['station_id']} done")
@@ -277,7 +277,7 @@ def publish_stations(client,station_request,status):
 				if "to_publish" in station_request:
 					range = int(station_request["to_publish"])
 
-				logger.debug(f"Publishing the top {range} lowest price gas stations")
+				logger.debug(f"publish_stations: Publishing the top '{range}' lowest price gas stations")
 				for item in result['gas_stations']:
 					if counter <= range:
 						publish_station(mqtt_client,station_request,item, None,counter) #publish also for lowest_price_[counter]
@@ -287,7 +287,7 @@ def publish_stations(client,station_request,status):
 			else:
 				logger.error(f"No gas stations where found in the longitude '{station_request['longitude']}' and latitude '{station_request['latitude']}'")
 		else:
-			logger.warning("The result of gas stations does not have the property gas_stations")
+			logger.warning("publish_stations: The result of gas stations does not have the property gas_stations")
 	except Exception as exception_info:
 		logger.error(f"Unable to process payload '{station_request}' with error: '{exception_info}'")
 
@@ -326,9 +326,9 @@ def publish_status(client,status):
 	while topic != is_discovered_status_topic:
 		sleep(1) #do not stress the CPU
 		counter += 1
-		logger.debug(f"publish: Waiting for discovery on topic '{topic}'")
+		logger.debug(f"publish_status: Waiting for discovery on topic '{topic}'")
 		if counter > 5:
-			logger.warning(f"publish: the sensor has not shown up in the topic '{topic}', the state can show up as 'unkown'")
+			logger.warning(f"publish_status: the sensor has not shown up in the topic '{topic}', the state can show up as 'unkown'")
 			break
 
 	client.unsubscribe(topic) #unsubscribe, it is no longer needed
@@ -343,7 +343,7 @@ def publish_status(client,status):
 	result_attrs = mqtt_client.publish(f"homeassistant/sensor/dgp/status/attr",json.dumps(status))
 
 	logger.debug(
-		f"publish: Autodiscover '{bool(result_ad.rc == mqtt.MQTT_ERR_SUCCESS)}', "
+		f"publish_status: Autodiscover '{bool(result_ad.rc == mqtt.MQTT_ERR_SUCCESS)}', "
 		f"State '{bool(result_state.rc == mqtt.MQTT_ERR_SUCCESS)}' and "
 		f"Attributes '{bool(result_attrs.rc == mqtt.MQTT_ERR_SUCCESS)}'"
 	)

@@ -65,6 +65,7 @@ def gas_stations(fuel,longitude,latitude,radius):
 
 	return_value = {}
 	return_value['gas_stations'] = sorted(stations, key=lambda x: x['price'], reverse=False) #sort on price, cheapest first
+	logger.info(f"There are '{len(stations)}' stations within range")
 	logger.debug(f"stations: return value '{return_value}'")
 	return return_value
 

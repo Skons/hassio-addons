@@ -1,5 +1,11 @@
 # Changelog
 
+## 2022.2.27.1
+
+- Fixed bug when station id is unknown
+- When the price per liter is higher then €10, it will be marked as unable to read
+- Improved logging
+
 ## 2022.2.16.1
 
 **Important**: The sensor name for a single gas station is changed to its id instead of the street address
