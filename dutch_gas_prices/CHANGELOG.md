@@ -1,5 +1,11 @@
 # Changelog
 
+## 2022.3.21.1
+
+- Fixed the error Unable to process payload '...' with error: ''<' not supported between instances of 'NoneType' and 'float''
+- LPG (autogas) is now correctly supported
+- CNG as fueltype is added
+
 ## 2022.2.27.1
 
 - Fixed bug when station id is unknown

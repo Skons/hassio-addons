@@ -54,6 +54,9 @@ The following `fuel_type` can be used in the payloads below.
 - euro98
 - diesel
 - lpg
+- cng
+
+When LPG is used, a station that provides autogas as fuel will also be returned
 
 ### Gas stations based on location and radius
 

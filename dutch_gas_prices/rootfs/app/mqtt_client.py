@@ -24,7 +24,7 @@ gas_stations_schema = {
 	"properties": {
 		"fuel_type": { 
 			"type": "string",
-			"enum": ["euro95","euro98","diesel","autogas"] 
+			"enum": ["euro95","euro98","diesel","cng","lpg"] 
 		},
 		"radius": {
 			"type": "integer",
@@ -47,7 +47,7 @@ gas_station_schema = {
 	"properties": {
 		"fuel_type": { 
 			"type": "string",
-			"enum": ["euro95","euro98","diesel","autogas"] 
+			"enum": ["euro95","euro98","diesel","cng","lpg"] 
 		},
 		"station_id": {"type": "integer"},
 		"friendly_name_template": {"type": "string"},

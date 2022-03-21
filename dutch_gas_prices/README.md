@@ -36,6 +36,6 @@ Any kind of help or useful input/feedback is appreciated! If you want to create 
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
 [armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
 [i386-shield]: https://img.shields.io/badge/i386-yes-green.svg
-[version]: https://img.shields.io/badge/version-v2022.2.27.1-blue.svg
+[version]: https://img.shields.io/badge/version-v2022.3.21.1-blue.svg
 [ex]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg

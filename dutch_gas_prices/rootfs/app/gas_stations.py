@@ -1,6 +1,7 @@
 """
 Dutch Gas stations API Module
 """
+from ast import Not
 import sys
 import json
 import logging
@@ -60,12 +61,14 @@ def gas_stations(fuel,longitude,latitude,radius):
 		return_value = is_location_in_radius(latitude, longitude, station_latitude, station_longitude, radius)
 		if return_value is True:
 			gasprices = gas_station(station['id'], fuel) #get the corresponding gas station and its prices
-			if 'price' in gasprices:
+			if 'price' in gasprices and gasprices['price'] is not None:
 				stations.append(gasprices)
+			elif 'price' in gasprices and gasprices['price'] is None:
+				logger.warning(f"gas_stations: The price for station id '{station['id']}' is 'None'")
 
 	return_value = {}
 	return_value['gas_stations'] = sorted(stations, key=lambda x: x['price'], reverse=False) #sort on price, cheapest first
-	logger.info(f"There are '{len(stations)}' stations within range")
+	logger.info(f"There are '{len(stations)}' stations within range for fuel type '{fuel}'")
 	logger.debug(f"stations: return value '{return_value}'")
 	return return_value
 

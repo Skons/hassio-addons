@@ -30,6 +30,10 @@ def get_all_stations(fuel):
 	Get all the gas stations from the tankservice app
 	:param fuel: The fuel type to get the stations for
 	"""
+
+	if fuel == "lpg": #switch to the fuel that the api uses
+		fuel = "autogas"
+
 	url = f'https://tankservice.app-it-up.com/Tankservice/v1/places?fmt=web&fuel={fuel}'
 
 	def _write_allstationdata():
@@ -165,7 +169,8 @@ def gas_station(station_id, fuel):
 			#lowercase definition of fuels to search
 			euro95_prijs = _search_value(ocr_lines, ['euro 95','euro95','(e10)'])
 			diesel_prijs = _search_value(ocr_lines, ['diesel','(b7)'])
-			lpg_prijs = _search_value(ocr_lines, ['lpg'])
+			lpg_prijs = _search_value(ocr_lines, ['lpg','autogas'])
+			cng_prijs = _search_value(ocr_lines, ['cng'])
 			euro98_prijs = _search_value(ocr_lines, ['euro 98','euro98','e5'])
 
 			if (euro95_prijs is None) or (diesel_prijs is None):
@@ -175,6 +180,7 @@ def gas_station(station_id, fuel):
 					'euro98': euro98_prijs,
 					'diesel' : diesel_prijs,
 					'lpg' : lpg_prijs,
+					'cng' : cng_prijs,
 					'station_street' : ocr_lines[0],
 					'station_address' : ocr_lines[1],
 					'timestamp': datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
@@ -187,6 +193,7 @@ def gas_station(station_id, fuel):
 					'euro98': euro98_prijs,
 					'diesel' : diesel_prijs,
 					'lpg' : lpg_prijs,
+					'cng' : cng_prijs,
 					'station_street' : ocr_lines[0],
 					'station_address' : ocr_lines[1],
 					'timestamp': datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
@@ -207,6 +214,7 @@ def gas_station(station_id, fuel):
 				'euro98': None,
 				'diesel' : None,
 				'lpg' : None,
+				'cng' : None,
 				'station_street' : None,
 				'station_address' : None,
 				'timestamp' : None,
@@ -242,10 +250,6 @@ def gas_station(station_id, fuel):
 	if return_value['station_id'] is not None:
 		price = return_value[fuel]
 		status = return_value['status']
-		if price > 10:
-			price = None
-			if status == 'Ok':
-				status = "Could not read price"
 
 		newdata = {
 			'station_id': return_value['station_id'],
