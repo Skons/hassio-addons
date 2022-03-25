@@ -75,7 +75,7 @@ automation:
       payload_template: '{"fuel_type":"euro95","radius":5,"latitude":{{ state_attr("person.skons", "latitude") }},"longitude":{{ state_attr("person.skons", "longitude") }}, "to_publish":3}'
 ```
 
-With `to_publish` you can determine how many of the cheapest discovered gas stations will show up, the default is 3. Gas stations with the lowest price will show up as:
+With `to_publish` you can determine how many of the cheapest discovered gas stations, within the defined radius of a location, will show up. Gas stations with the lowest price will show up as:
 
 ```
 sensor.gas_station_[fuel_type]_lowest_price_1
@@ -83,7 +83,7 @@ sensor.gas_station_[fuel_type]_lowest_price_2
 sensor.gas_station_[fuel_type]_lowest_price_3
 ```
 
-This is what can be used as payload:
+This is the JSON payload that can be used:
 
 ```json
 {
@@ -91,8 +91,9 @@ This is what can be used as payload:
   "radius": 5, #in kilometers, maximum 15
   "latitude": 6,
   "longitude": 53,
-  "to_publish": 3 #Optional, default 3,
-  "friendly_name_template": "[brand] ([station_street])" #Optional, change the friendly name by using the attributes of the sensor
+  "identifier": "uniquename", #Optional
+  "to_publish": 3, #Optional, default 3
+  "friendly_name_template": "[brand] ([station_street])" #Optional
 }
 ```
 
@@ -111,6 +112,17 @@ To get a notification for the lowest gas station price after the latest price ha
       data:
         url: https://www.google.com/maps/search/?api=1&query={{ state_attr("sensor.gas_station_[fuel_type]_lowest_price_1","latitude") }},{{ state_attr("sensor.gas_station_[fuel_type]_lowest_price_1", "longitude") }}
 ```
+#### identifier
+
+The identifier is only available for the list of cheapest gas stations. This can be used to get a list associated with a user, car or whatever is needed. By default the sensor will be named `sensor.gas_station_[fuel_type]_lowest_price_1`. When identifier is specified, the sensor name will be `sensor.gas_station_[fuel_type]_[identifier]_lowest_price_1`. Only the characters a-z0-9, with a maximum of 10 characters, can be used.
+
+#### to_publish
+
+The number of cheapest gas stations that will be published to Home Assistant.
+
+#### friendly_name_template
+
+Define if a different friendly name is needed. All the attributes of the sensor can be used by providing them within brackets. For instance when `[station_street]` is used, it will be replaced by the name of the street of the station which could be `Some street 10`. See the attributes of the sensor to see what can be used.
 
 ### Gas stations based on id
 
@@ -129,7 +141,7 @@ automation:
       payload: '{"station_id":####,"fuel_type":"euro95"}'
 ```
 
-This is what can be used as payload:
+This is the JSON payload that can be used:
 
 ```json
 {
