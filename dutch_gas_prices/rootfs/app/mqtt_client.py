@@ -26,6 +26,10 @@ gas_stations_schema = {
 			"type": "string",
 			"enum": ["euro95","euro98","diesel","cng","lpg"] 
 		},
+		"identifier": { 
+			"type": "string",
+			"pattern": "^[a-z0-9]{0,10}$"
+		},
 		"radius": {
 			"type": "integer",
 			"minimum": 1,
@@ -95,56 +99,56 @@ def on_message(client, userdata, message):
 		dgp_station_status['request_start'] = datetime.datetime.utcnow()
 		dgp_station_status['request_type'] = 'gas_station'
 		logger.info(f"Received payload '{payload}' on topic '{message.topic}'")
-		data = None
+		json_payload = None
 		try:
-			data = json.loads(payload)
+			json_payload = json.loads(payload)
 		except Exception as exception_info:
-			logger.error(f"Unable to process payload '{payload}' with error: '{exception_info}'")
+			logger.error(f"Unable to process gas_station payload '{payload}' with error: '{exception_info}'")
 
 		boolGetStation = False
-		if data is not None:
+		if json_payload is not None:
 			boolGetStation = True
 			try:
-				validate(instance=data, schema=gas_station_schema)
+				validate(instance=json_payload, schema=gas_station_schema)
 			except jsonschema.exceptions.ValidationError as err:
 				boolGetStation = False
 				logger.error(f"Unable to validate payload '{payload}' for gas_station with error: '{err}'")
 
 		if boolGetStation:
 			try:
-				result = gas_station(int(data['station_id']),data['fuel_type'])
+				result = gas_station(int(json_payload['station_id']),json_payload['fuel_type'])
 				if 'station_id' in result:
 					dgp_station_status['number_of_stations'] = len(result)
-					t = threading.Thread(target=publish_station, args=(client,data,result,dgp_station_status))
+					t = threading.Thread(target=publish_station, args=(client,json_payload,result,dgp_station_status))
 					t.start() #start multithreading of the station processing, on_message needs to be free
 				else:
-					logger.warning(f"Gas station with id '{data['station_id']}' was not found")
+					logger.warning(f"Gas station with id '{json_payload['station_id']}' was not found")
 			except Exception as exception_info:
-				logger.error(f"Unable to process stationid '{data['station_id']}' with fuel_type '{data['fuel_type']}', error: '{exception_info}'")
+				logger.error(f"Unable to process stationid '{json_payload['station_id']}' with fuel_type '{json_payload['fuel_type']}', error: '{exception_info}'")
 
 	elif message.topic == 'dgp/gas_stations': #process gas stations within a radius
 		dgp_stations_status = {}
 		dgp_stations_status['request_start'] = datetime.datetime.utcnow()
 		dgp_stations_status['request_type'] = 'gas_stations'
 		logger.info(f"Received payload '{payload}' on topic '{message.topic}'")
-		data = None
+		json_payload = None
 		try:
-			data = json.loads(payload)
+			json_payload = json.loads(payload)
 		except Exception as exception_info:
-			logger.error(f"Unable to process payload '{payload}' with error: '{exception_info}'")
+			logger.error(f"Unable to process gas_stations payload '{payload}' with error: '{exception_info}'")
 
 		boolGetStations = False
-		if data is not None:
+		if json_payload is not None:
 			boolGetStations = True
 			try:
-				validate(instance=data, schema=gas_stations_schema)
+				validate(instance=json_payload, schema=gas_stations_schema)
 			except jsonschema.exceptions.ValidationError as err:
 				boolGetStations = False
 				logger.error(f"unable to validate payload '{payload}' for gas_stations with error: '{err}'")
 
 		if boolGetStations:
 			#start the request, processing and publishing in a seperate request, it could take long
-			t = threading.Thread(target=publish_stations, args=(client,data,dgp_stations_status))
+			t = threading.Thread(target=publish_stations, args=(client,json_payload,dgp_stations_status))
 			t.start() #do not wait, on_message must be free
 			
 	elif message.topic.startswith("homeassistant/sensor/dgp_gasstation/"): #just register the topic where a publish has taken place
@@ -177,6 +181,10 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		stationtopic = f"{station_info['fuel_type']}_lowestprice_{lowestprice}"
 		sensorname = f"gas_station_{station_info['fuel_type']}_lowest_price_{lowestprice}"
 		stationname = f"Gas station {station_info['fuel_type']} lowest price {lowestprice}"
+		if 'identifier' in station_request: #add identifier to the sensor
+			stationtopic = f"{station_info['fuel_type']}_{station_request['identifier']}_lowestprice_{lowestprice}"
+			sensorname = f"gas_station_{station_info['fuel_type']}_{station_request['identifier']}_lowest_price_{lowestprice}"
+			stationname = f"Gas station {station_info['fuel_type']} {station_request['identifier']} lowest price {lowestprice}"
 
 	topic = f"homeassistant/sensor/dgp_gasstation/{stationtopic}/config"
 	client.subscribe(topic)
@@ -289,7 +297,7 @@ def publish_stations(client,station_request,status):
 		else:
 			logger.warning("publish_stations: The result of gas stations does not have the property gas_stations")
 	except Exception as exception_info:
-		logger.error(f"Unable to process payload '{station_request}' with error: '{exception_info}'")
+		logger.error(f"Unable to process station_request payload '{station_request}' with error: '{exception_info}'")
 
 	publish_status(client,status)
 

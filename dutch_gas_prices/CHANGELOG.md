@@ -1,5 +1,10 @@
 # Changelog
 
+## 2022.3.25.1
+
+- Added the ability to use a unique identifier for the cheapest gas station sensors
+- Documentation updates
+
 ## 2022.3.21.1
 
 - Fixed the error Unable to process payload '...' with error: ''<' not supported between instances of 'NoneType' and 'float''
