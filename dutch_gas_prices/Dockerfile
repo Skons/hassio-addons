@@ -21,14 +21,14 @@ RUN \
         libjpeg \
         zlib-dev \
         gcc \
-        libc-dev 
+        libc-dev
 #infra
 RUN \
         mkdir -p /app \
         && mkdir -p /app/cache
 #pillow
 RUN \
-         pip3 install Pillow 
+         pip3 install Pillow
 #requirements
 RUN \
         pip3 install requests \

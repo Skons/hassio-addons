@@ -1,5 +1,10 @@
 # Changelog
 
+## 2023.4.16.1
+
+- Fixed issue #40
+- Improved logging
+
 ## 2022.3.25.1
 
 - Added the ability to use a unique identifier for the cheapest gas station sensors

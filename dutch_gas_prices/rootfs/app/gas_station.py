@@ -128,8 +128,8 @@ def gas_station(station_id, fuel):
 			img.save(f'cache/{station_id}.png')
 
 			#convert the blue to white
-			width = img.size[0] 
-			height = img.size[1] 
+			width = img.size[0]
+			height = img.size[1]
 			for i in range(0,width):# process all pixels
 				for j in range(0,height):
 					data = img.getpixel((i,j))
@@ -149,7 +149,11 @@ def gas_station(station_id, fuel):
 
 			#replace logo, prevent OCR from reading text. The logo is detectable by background color (#TODO)
 			draw = ImageDraw.Draw(img2)
-			draw.rectangle((((width*resize_number) - (logo_width*resize_number)), (logo_top*resize_number), (width*resize_number), 0), fill=255) 
+			x0 = ((width*resize_number) - (logo_width*resize_number)) #right corner minus logo
+			y0 = 0 #top
+			x1 = (width*resize_number) #rigth corner
+			y1 = (logo_top*resize_number) #logo size
+			logger.debug(f"_write_stationdata: draw logo coverup with coordinates x0: '{x0}', y0: '{y0}', x1: '{x1}', '{y1}'")
 
 			#Improve contrast to have more clear lines. Fiddeling means improvement on some digits and worsening on others
 			contrast_enhance = 2
@@ -157,6 +161,7 @@ def gas_station(station_id, fuel):
 				if 'contrast_enhance' in addon_config['ocr']:
 					if type(addon_config['ocr']['contrast_enhance']) == int:
 						contrast_enhance = addon_config['ocr']['contrast_enhance']
+						logger.debug(f"_write_stationdata: Enhancing contrast with '{contrast_enhance}'")
 
 			img2 = ImageEnhance.Contrast(img2).enhance(contrast_enhance)
 			img2.save(f'cache/{station_id}_edit.png')
@@ -165,6 +170,7 @@ def gas_station(station_id, fuel):
 			ocr_result = pytesseract.image_to_string(img2, config='--psm 6 --oem 3') #configure tesseract explicit
 			ocr_lines = ocr_result.split("\n")
 			ocr_lines = list(filter(None, ocr_lines)) #Filter out empty values
+			logger.debug(f"_write_stationdata: OCR lines detected '{ocr_lines}'")
 
 			#lowercase definition of fuels to search
 			euro95_prijs = _search_value(ocr_lines, ['euro 95','euro95','(e10)'])
@@ -228,6 +234,8 @@ def gas_station(station_id, fuel):
 	if return_value == False:
 		logger.debug(f"station: Station id '{station_id}' new request")
 		return_value = _write_stationdata(station_id)
+	else:
+		logger.debug(f"station: Station id '{station_id}' from cache")
 
 	stationdata = get_all_stations(fuel)
 	stationinfo = None
