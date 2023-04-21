@@ -35,15 +35,15 @@ The port number of your MQTT host. If you are running mosquitto on HA, you do no
 
 ### Option: `mqtt_username` (optional)
 
-The username used to connect to the MQTT host
+The username used to connect to the MQTT host. If you are running mosquitto on HA, you do not need to configure this option.
 
 ### Option: `mqtt_password` (optional)
 
-The password used to connect to the MQTT host
+The password used to connect to the MQTT host. If you are running mosquitto on HA, you do not need to configure this option.
 
 ### Option: `ocr.contrast_enhance` (optional)
 
-While preprocessing the fuel station image, the contrast is enhanced. By default this is done by a factor of 2. Results may vary upon changing this value. If tesseract OCR is not performing, change this value to see if better results are achieved. This option changes [ImageEnhance](https://pillow.readthedocs.io/en/stable/reference/ImageEnhance.html) of the PIL addin 
+While preprocessing the fuel station image, the contrast is enhanced. By default this is done by a factor of 2. Results may vary upon changing this value. If tesseract OCR is not performing, change this value to see if better results are achieved. This option changes [ImageEnhance](https://pillow.readthedocs.io/en/stable/reference/ImageEnhance.html) of the PIL addin
 
 ## Home Assistant Sensor
 

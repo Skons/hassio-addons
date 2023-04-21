@@ -1,8 +1,16 @@
 # Changelog
 
+## 2023.4.21.1
+
+- Fixed issue [#45](https://github.com/Skons/hassio-addons/issues/45)
+- Switched to base-python image version 10.1.2
+- Switched from config.json to config.yaml
+- MQTT Username and Password provided by the supervisor can now be used
+- Introduced apparmor.txt
+
 ## 2023.4.16.1
 
-- Fixed issue #40
+- Fixed issue [#40](https://github.com/Skons/hassio-addons/issues/40)
 - Improved logging
 
 ## 2022.3.25.1
