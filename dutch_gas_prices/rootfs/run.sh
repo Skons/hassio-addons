@@ -1,4 +1,4 @@
-#!/usr/bin/env bashio
+#!/usr/bin/with-contenv bashio
 set -e
 
 # Create main config
@@ -6,25 +6,25 @@ LOG_LEVEL=$(bashio::config 'log_level')
 if bashio::config.has_value 'mqtt_host'; then
     MQTT_HOST=$(bashio::config 'mqtt_host')
 else
-    MQTT_HOST=$(bashio::services mqtt "host")
+    MQTT_HOST=$(bashio::services mqtt 'host')
 fi
 
 if bashio::config.has_value 'mqtt_port'; then
     MQTT_PORT=$(bashio::config 'mqtt_port')
 else
-    MQTT_PORT=$(bashio::services mqtt "port")
+    MQTT_PORT=$(bashio::services mqtt 'port')
 fi
 
 if bashio::config.has_value 'mqtt_username'; then
     MQTT_USERNAME=$(bashio::config 'mqtt_username')
 else
-    MQTT_USERNAME=$(bashio::services mqtt "mqtt_username")
+    MQTT_USERNAME=$(bashio::services mqtt 'username')
 fi
 
 if bashio::config.has_value 'mqtt_password'; then
     MQTT_PASSWORD=$(bashio::config 'mqtt_password')
 else
-    MQTT_PASSWORD=$(bashio::services mqtt "mqtt_password")
+    MQTT_PASSWORD=$(bashio::services mqtt 'password')
 fi
 
 export SUPERVISOR_URL="http://supervisor/core"
