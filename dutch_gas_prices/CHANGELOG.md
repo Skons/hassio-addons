@@ -1,5 +1,10 @@
 # Changelog
 
+## 2023.4.26.1
+
+- Fixed issue [#44](https://github.com/Skons/hassio-addons/issues/44)
+- The image, and the image edited for tesseract, are now send to the MQTT topic dgp/[station-id]
+
 ## 2023.4.21.1
 
 - Fixed issue [#45](https://github.com/Skons/hassio-addons/issues/45)

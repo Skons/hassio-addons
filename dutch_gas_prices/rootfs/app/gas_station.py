@@ -17,6 +17,8 @@ from fake_headers import Headers
 from dgp_common import _read_cached_jsonfile
 from dgp_common import get_logger
 from dgp_common import _read_dockerconfig
+import pathlib
+from os import path
 
 # Settings
 CACHE_TIME = 3600
@@ -24,6 +26,9 @@ CACHE_TIME_STATIONS = 86400 #24h, could be longer, stations don't come and go ve
 
 logger = get_logger(__name__)
 logging.getLogger('PIL').setLevel(logging.WARNING)
+cache_path = str(pathlib.Path(__file__).parent.resolve()) + '/cache/'
+
+logger.debug(f"gas_station: Cachepath is '{cache_path}'")
 
 def get_all_stations(fuel):
 	"""
@@ -51,7 +56,7 @@ def get_all_stations(fuel):
 		if response.status_code == 200:
 			data = response.json()
 
-			with open('cache/' + f'{fuel}.json', 'w') as outfile:
+			with open(cache_path + f'{fuel}.json', 'w') as outfile:
 					json.dump(data, outfile)
 		else:
 			logger.error(f"_write_allstationdata: statuscode '{response.status_code}'")
@@ -62,10 +67,12 @@ def get_all_stations(fuel):
 			data = {}
 		return data
 
-	stationdata = _read_cached_jsonfile('cache/' + f'{fuel}.json', CACHE_TIME_STATIONS)
+	stationdata = _read_cached_jsonfile(cache_path + f'{fuel}.json', CACHE_TIME_STATIONS)
 	if stationdata == False:
 		logger.debug(f"gas_station: Fuel '{fuel}' new request")
 		stationdata = _write_allstationdata()
+	else:
+		logger.debug(f"gas_station: Fuel '{fuel}' from cache")
 	return stationdata
 
 def gas_station(station_id, fuel):
@@ -125,7 +132,7 @@ def gas_station(station_id, fuel):
 			logo_width = 60
 			logo_top = 50
 			img = Image.open(BytesIO(response.content))
-			img.save(f'cache/{station_id}.png')
+			img.save(f'{cache_path}{station_id}.png')
 
 			#convert the blue to white
 			width = img.size[0]
@@ -154,6 +161,7 @@ def gas_station(station_id, fuel):
 			x1 = (width*resize_number) #rigth corner
 			y1 = (logo_top*resize_number) #logo size
 			logger.debug(f"_write_stationdata: draw logo coverup with coordinates x0: '{x0}', y0: '{y0}', x1: '{x1}', '{y1}'")
+			draw.rectangle((x0, y0, x1, y1), fill=255)
 
 			#Improve contrast to have more clear lines. Fiddeling means improvement on some digits and worsening on others
 			contrast_enhance = 2
@@ -161,10 +169,10 @@ def gas_station(station_id, fuel):
 				if 'contrast_enhance' in addon_config['ocr']:
 					if type(addon_config['ocr']['contrast_enhance']) == int:
 						contrast_enhance = addon_config['ocr']['contrast_enhance']
-						logger.debug(f"_write_stationdata: Enhancing contrast with '{contrast_enhance}'")
+			logger.debug(f"_write_stationdata: Enhancing contrast with '{contrast_enhance}'")
 
 			img2 = ImageEnhance.Contrast(img2).enhance(contrast_enhance)
-			img2.save(f'cache/{station_id}_edit.png')
+			img2.save(f'{cache_path}{station_id}_edit.png')
 
 			#do the ocr
 			ocr_result = pytesseract.image_to_string(img2, config='--psm 6 --oem 3') #configure tesseract explicit
@@ -206,7 +214,7 @@ def gas_station(station_id, fuel):
 					'status' : 'Ok'
 				}
 
-			with open('cache/' + f'{station_id}.json', 'w') as outfile:
+			with open(f'{cache_path}{station_id}.json', 'w') as outfile:
 				json.dump(data, outfile)
 		else:
 			logger.error(f"_write_stationdata '{station_id}': statuscode '{response.status_code}'")
@@ -230,7 +238,7 @@ def gas_station(station_id, fuel):
 
 	# Main logic
 	request_start =  datetime.datetime.utcnow()
-	return_value = _read_cached_jsonfile('cache/' + f'{station_id}.json', CACHE_TIME)
+	return_value = _read_cached_jsonfile(f'{cache_path}{station_id}.json', CACHE_TIME)
 	if return_value == False:
 		logger.debug(f"station: Station id '{station_id}' new request")
 		return_value = _write_stationdata(station_id)
@@ -258,9 +266,17 @@ def gas_station(station_id, fuel):
 	if return_value['station_id'] is not None:
 		price = return_value[fuel]
 		status = return_value['status']
+		station_id = return_value['station_id']
+
+		image_path = cache_path + str(return_value['station_id']) + ".png"
+		prepped_image_path = cache_path + str(return_value['station_id']) + "_edit.png"
+		if not path.exists(image_path):
+			image_path = ""
+		if not path.exists(prepped_image_path):
+			prepped_image_path = ""
 
 		newdata = {
-			'station_id': return_value['station_id'],
+			'station_id': station_id,
 			'price': price,
 			'fuel_type': fuel,
 			'station_street' : return_value['station_street'],
@@ -268,7 +284,9 @@ def gas_station(station_id, fuel):
 			'timestamp' : return_value['timestamp'],
 			'status' : status,
 			'processing_start': return_value['processing_start'],
-			'processing_time': return_value['processing_time']
+			'processing_time': return_value['processing_time'],
+			'image': image_path,
+			'prepped_image': prepped_image_path
 		}
 		#merge the station information
 		return_value = {**newdata, **stationinfo}

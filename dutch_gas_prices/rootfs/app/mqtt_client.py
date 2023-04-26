@@ -5,6 +5,7 @@ import os
 import threading
 import sys
 import datetime
+from datetime import  timezone
 import threading
 import requests
 from pathlib import Path
@@ -14,6 +15,7 @@ from gas_stations import gas_stations
 from dgp_common import get_logger
 
 import paho.mqtt.client as mqtt
+import base64
 
 logger = get_logger(__name__)
 mqtt_client = None
@@ -150,8 +152,8 @@ def on_message(client, userdata, message):
 			#start the request, processing and publishing in a seperate request, it could take long
 			t = threading.Thread(target=publish_stations, args=(client,json_payload,dgp_stations_status))
 			t.start() #do not wait, on_message must be free
-			
-	elif message.topic.startswith("homeassistant/sensor/dgp_gasstation/"): #just register the topic where a publish has taken place
+
+	elif message.topic.startswith("homeassistant/sensor/dgp_gas_station/"): #just register the topic where a publish has taken place
 		logger.debug(f"on_message: received the topic '{message.topic}'")
 		is_discovered_topic = message.topic
 	elif message.topic.startswith("homeassistant/sensor/dgp/"): #just register the topic where a publish has taken place
@@ -176,29 +178,26 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 
 	stationtopic = f"{station_info['station_id']}_{station_info['fuel_type']}"
 	sensorname = f"gas_station_{station_info['station_id']}_{station_info['fuel_type']}"
-	stationname = f"Gas station {station_info['station_street']} {station_info['fuel_type']}"
 	if lowestprice > 0:
 		stationtopic = f"{station_info['fuel_type']}_lowestprice_{lowestprice}"
 		sensorname = f"gas_station_{station_info['fuel_type']}_lowest_price_{lowestprice}"
-		stationname = f"Gas station {station_info['fuel_type']} lowest price {lowestprice}"
 		if 'identifier' in station_request: #add identifier to the sensor
 			stationtopic = f"{station_info['fuel_type']}_{station_request['identifier']}_lowestprice_{lowestprice}"
 			sensorname = f"gas_station_{station_info['fuel_type']}_{station_request['identifier']}_lowest_price_{lowestprice}"
-			stationname = f"Gas station {station_info['fuel_type']} {station_request['identifier']} lowest price {lowestprice}"
 
-	topic = f"homeassistant/sensor/dgp_gasstation/{stationtopic}/config"
+	topic = f"homeassistant/sensor/dgp_gas_station/{stationtopic}/config"
 	client.subscribe(topic)
 	#send the sensor as autodiscover to home assistant
 	result_ad = client.publish(
 		topic,
 		json.dumps(
 			{
-				"name": stationname,
+				"name": f"gas_station_{stationtopic}",
 				"icon": "mdi:fuel",
-				"state_topic": f"homeassistant/sensor/dgp_gasstation/{stationtopic}/state",
-				"json_attributes_topic": f"homeassistant/sensor/dgp_gasstation/{stationtopic}/attr",
+				"state_topic": f"homeassistant/sensor/dgp_gas_station/{stationtopic}/state",
+				"json_attributes_topic": f"homeassistant/sensor/dgp_gas_station/{stationtopic}/attr",
 				"unit_of_measurement": "€",
-				"unique_id": f"gasstation_{stationtopic}",
+				"unique_id": f"gas_station_{stationtopic}",
 			}
 		)
 	)
@@ -225,9 +224,28 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		friendly_name = friendly_name.replace(f"[{key}]",f"{station_info[key]}")
 	station_info["friendly_name"] = friendly_name
 
-	#send all information, 
-	#result_state = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/state",station_info['price'])
-	#result_attrs = mqtt_client.publish(f"homeassistant/sensor/dgp_gasstation/{stationtopic}/attr",json.dumps(station_info))
+	#send all information,
+	#result_state = mqtt_client.publish(f"homeassistant/sensor/dgp_gas_station/{stationtopic}/state",station_info['price'])
+	#result_attrs = mqtt_client.publish(f"homeassistant/sensor/dgp_gas_station/{stationtopic}/attr",json.dumps(station_info))
+
+	try:
+		logger.debug(f"publish_station: Publish station data for station id '{station_info['station_id']}'.")
+		mqtt_client.publish(f"dgp/{station_info['station_id']}/{station_info['fuel_type']}",station_info['price'])
+		mqtt_client.publish(f"dgp/{station_info['station_id']}/timestamp",datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat())
+		if station_info['image']:
+			with open(station_info['image'],'rb') as file:
+				#filecontent = file.read() # byte array
+				filecontent = "data:image/png;base64," + str(base64.b64encode(file.read()))[2:-1]
+			mqtt_client.publish(f"dgp/{station_info['station_id']}/image",filecontent)
+			mqtt_client.publish(f"dgp/{station_info['station_id']}/image_timestamp",str(datetime.datetime.fromtimestamp(os.path.getmtime(station_info['image']), tz=timezone.utc).isoformat()))
+		if station_info['prepped_image']:
+			with open(station_info['prepped_image'],'rb') as file:
+				#filecontent = file.read() # byte array
+				filecontent = "data:image/png;base64," + str(base64.b64encode(file.read()))[2:-1]
+			mqtt_client.publish(f"dgp/{station_info['station_id']}/prepped_image",filecontent)
+			mqtt_client.publish(f"dgp/{station_info['station_id']}/prepped_image_timestamp",str(datetime.datetime.fromtimestamp(os.path.getmtime(station_info['prepped_image']), tz=timezone.utc).isoformat()))
+	except Exception as exception_info:
+		logger.error(f"publish_station: Unable to publish data for station id '{station_info['station_id']}' with error: '{exception_info}'")
 
 	#it is not possible to publish the friendly_name over MQTT, therefore the home assistant api is used
 	#discovery is still done with mqtt
@@ -244,6 +262,8 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		logger.debug(f"publish_station: Setting sensor values to url '{sensor_url}' with token")
 		obj = {}
 		obj["state"] = station_info['price']
+		ok = station_info.pop("image", None)
+		ok = station_info.pop("prepped_image", None)
 		obj["attributes"] = station_info
 
 		headers = {}
@@ -251,6 +271,8 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		headers["Content-Type"] = "application/json"
 
 		try:
+			g = requests.get(sensor_url, headers=headers, timeout=10)
+			logger.debug('publish_station: get = %s',g)
 			r = requests.post(sensor_url, json=obj, headers=headers, timeout=10)
 			logger.debug('publish_station: Status Code  = %s',r.status_code)
 			return r.status_code
