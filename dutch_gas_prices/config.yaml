@@ -1,5 +1,5 @@
 name: Dutch gas prices
-version: 2023.4.26.1
+version: 2023.6.1.1
 slug: dutch_gas_prices
 description: Get gas prices from dutch gas stations
 url: https://github.com/Skons/hassio-addons/tree/main/dutch_gas_prices
