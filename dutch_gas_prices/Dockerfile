@@ -14,31 +14,38 @@ COPY rootfs/run.sh /
 
 #install packages
 RUN \
-    apk add --no-cache --virtual .build-dependencies \
-        tesseract-ocr \
-        tesseract-ocr-dev \
-        jpeg-dev \
-        libjpeg \
-        zlib-dev \
-        gcc \
-        libc-dev
+    apk add --no-cache --virtual .build-dependencies=20230531.221623 \
+        tesseract-ocr=5.3.1-r1 \
+        tesseract-ocr-dev=5.3.1-r1 \
+        jpeg-dev=9e-r1 \
+        libjpeg=9e-r1 \
+        zlib-dev=1.2.13-r1 \
+        gcc=12.2.1_git20220924-r10 \
+        libc-dev=0.7.2-r5
+
 #infra
 RUN \
         mkdir -p /app \
         && mkdir -p /app/cache
+
 #pillow
 RUN \
-         pip3 install Pillow
+         pip3 install Pillow==9.5.0
+
 #requirements
 RUN \
-        pip3 install requests \
+        pip3 install requests==2.31.0 \
         requests[socks] \
         requests[security] \
-        fake_headers \
-        pytesseract \
-        geopy \
-        jsonschema \
-        paho-mqtt
+        fake_headers==1.0.2 \
+        pytesseract==0.3.10 \
+        geopy==2.3.0 \
+        jsonschema==4.17.3 \
+        paho-mqtt==1.6.1
+
+#copy traineddata
+COPY rootfs/traineddata /usr/share/tessdata
+
 #make it run
 RUN \
         chmod a+x /run.sh
