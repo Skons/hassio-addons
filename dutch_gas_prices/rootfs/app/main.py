@@ -22,4 +22,4 @@ if __name__ == "__main__":
 	if len(sys.argv) > 4:
 		start(str(sys.argv[1]),str(sys.argv[2]),str(sys.argv[3]),str(sys.argv[4]),str(sys.argv[5]))
 	else:
-		start(str(sys.argv[1]),str(sys.argv[2]),str(sys.argv[3])) 
+		start(str(sys.argv[1]),str(sys.argv[2]),str(sys.argv[3]))
