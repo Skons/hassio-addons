@@ -30,6 +30,9 @@ cache_path = str(pathlib.Path(__file__).parent.resolve()) + '/cache/'
 
 logger.debug(f"gas_station: Cachepath is '{cache_path}'")
 
+# Generate headers with a browser user agent
+headers = Headers(headers=False).generate()
+
 def get_all_stations(fuel):
 	"""
 	Get all the gas stations from the tankservice app
@@ -45,13 +48,13 @@ def get_all_stations(fuel):
 		"""
 		Query the api and cache the results to a json file
 		"""
-		headers = Headers(headers=True).generate()
-
 		session = requests.Session()
 		retry = Retry(connect=3, backoff_factor=0.5)
 		adapter = HTTPAdapter(max_retries=retry)
 		session.mount('http://', adapter)
 		session.mount('https://', adapter)
+		logging.debug(f"_write_allstationdata: URL '{url}'")
+		logging.debug(f"_write_allstationdata: headers '{headers}'")
 		response = session.get(url, headers=headers)
 		if response.status_code == 200:
 			data = response.json()
@@ -119,13 +122,13 @@ def gas_station(station_id, fuel):
 		"""
 		Query the api and cache the results to a json file
 		"""
-		headers = Headers(headers=True).generate()
-
 		session = requests.Session()
 		retry = Retry(connect=3, backoff_factor=0.5)
 		adapter = HTTPAdapter(max_retries=retry)
 		session.mount('http://', adapter)
 		session.mount('https://', adapter)
+		logging.debug(f"_write_stationdata: URL '{url}'")
+		logging.debug(f"_write_stationdata: headers '{headers}'")
 		response = session.get(url, headers=headers)
 		if response.status_code == 200:
 			resize_number = 4
@@ -297,4 +300,4 @@ def gas_station(station_id, fuel):
 
 if __name__ == '__main__':
 	#if called upon directly, use gas_station.py [stationid] or gas_station.py [station_id] [fuel_type]
-	gas_station(str(sys.argv[1]),str(sys.argv[2])) 
+	gas_station(str(sys.argv[1]),str(sys.argv[2]))

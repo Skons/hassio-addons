@@ -1,5 +1,10 @@
 # Changelog
 
+## 2023.8.7.1
+- Fixed issue [#51](https://github.com/Skons/hassio-addons/issues/51)
+- Hopefully fixed issue [#50](https://github.com/Skons/hassio-addons/issues/50)
+- Fixed issue [#52](https://github.com/Skons/hassio-addons/issues/52)
+
 ## 2023.4.26.1
 
 - Fixed issue [#44](https://github.com/Skons/hassio-addons/issues/44)
