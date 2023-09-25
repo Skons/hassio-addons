@@ -1,5 +1,8 @@
 # Changelog
 
+## 2023.9.25.1
+- Updated to latest base-python image
+
 ## 2023.8.11.1
 - Fixed issue [#50](https://github.com/Skons/hassio-addons/issues/50)
 

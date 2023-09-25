@@ -1,5 +1,5 @@
 #https://github.com/hassio-addons/addon-base-python/pkgs/container/base-python%2Farmv7
-ARG BUILD_FROM=ghcr.io/hassio-addons/base-python/amd64:11.0.4
+ARG BUILD_FROM=ghcr.io/hassio-addons/base-python/amd64:11.0.5
 FROM ${BUILD_FROM}
 
 # Set shell
