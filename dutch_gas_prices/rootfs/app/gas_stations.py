@@ -47,6 +47,13 @@ def gas_stations(fuel,longitude,latitude,radius):
 			return False
 
 	# Main logic
+	# Making sure the request is in the netherlands
+	if latitude > 54 or latitude < 50:
+		logger.error(f"gas_stations: Latitude '{latitude}' should be between 50 and 54")
+		return
+	if longitude > 8 or longitude < 3:
+		logger.error(f"gas_stations: Longitude '{longitude}' should be between 3 and 8")
+		return
 	stationdata = get_all_stations(fuel)
 
 	stations = []
@@ -55,7 +62,7 @@ def gas_stations(fuel,longitude,latitude,radius):
 		Loop through all stations and find if they are within radius
 		"""
 		station_lat = str(station['lat'])
-		station_latitude = float(station_lat[:2] + "." + station_lat[2:])#quick and dirty conversion of lat lon to float, should not be done this way
+		station_latitude = float(station_lat[:2] + "." + station_lat[2:]) #quick and dirty conversion of lat lon to float, should not be done this way
 		station_lon = str(station['lng'])
 		station_longitude = float(station_lon[:1] + "." + station_lon[1:])
 		return_value = is_location_in_radius(latitude, longitude, station_latitude, station_longitude, radius)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2023.10.15.1
+**Important**: The naming of the sensors have been changed. This change is **breaking**! The documenation already reflected this change, sensors are now named `_lowest_price_` instead of `_lowestprice_`
+ - It's no longer possible to search for a station outside the longitude and latitude of the netherlands
+ - Small code improvements
+ - Documentation updates
+
 ## 2023.9.25.1
 - Updated to latest base-python image
 
@@ -65,7 +71,7 @@
 
 ## 2021.11.10.1
 
-**Important**: This addon no longer relies on uvicorn and fastapi, it now makes use of MQTT. This chanage is **breaking** please read the docs
+**Important**: This addon no longer relies on uvicorn and fastapi, it now makes use of MQTT. This change is **breaking** please read the docs
 
 - Switched to MQTT
 - The sensors are renamed

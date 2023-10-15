@@ -89,8 +89,8 @@ This is the JSON payload that can be used:
 {
   "fuel_type": "euro95",
   "radius": 5, #in kilometers, maximum 15
-  "latitude": 6,
-  "longitude": 53,
+  "latitude": 53,
+  "longitude": 6,
   "identifier": "uniquename", #Optional
   "to_publish": 3, #Optional, default 3
   "friendly_name_template": "[brand] ([station_street])" #Optional
