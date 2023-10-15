@@ -24,11 +24,11 @@ mqtt_client = None
 gas_stations_schema = {
 	"type": "object",
 	"properties": {
-		"fuel_type": { 
+		"fuel_type": {
 			"type": "string",
-			"enum": ["euro95","euro98","diesel","cng","lpg"] 
+			"enum": ["euro95","euro98","diesel","cng","lpg"]
 		},
-		"identifier": { 
+		"identifier": {
 			"type": "string",
 			"pattern": "^[a-z0-9]{0,10}$"
 		},
@@ -51,9 +51,9 @@ gas_stations_schema = {
 gas_station_schema = {
 	"type": "object",
 	"properties": {
-		"fuel_type": { 
+		"fuel_type": {
 			"type": "string",
-			"enum": ["euro95","euro98","diesel","cng","lpg"] 
+			"enum": ["euro95","euro98","diesel","cng","lpg"]
 		},
 		"station_id": {"type": "integer"},
 		"friendly_name_template": {"type": "string"},
@@ -69,7 +69,7 @@ def on_connect(client, userdata, flags, rc):
 	:param flags: Flags for paho mqtt
 	:param rc: The response code
 	"""
-	logger.info("Connected with result code {0}".format(str(rc)))
+	logger.info("Connected with result code '{0}'".format(str(rc)))
 	mqtt_topics = [("dgp/gas_station",0),("dgp/gas_stations",0)]
 	client.subscribe(mqtt_topics)
 
@@ -139,19 +139,14 @@ def on_message(client, userdata, message):
 		except Exception as exception_info:
 			logger.error(f"Unable to process gas_stations payload '{payload}' with error: '{exception_info}'")
 
-		boolGetStations = False
 		if json_payload is not None:
-			boolGetStations = True
 			try:
 				validate(instance=json_payload, schema=gas_stations_schema)
+				#start the request, processing and publishing in a seperate request, it could take long
+				t = threading.Thread(target=publish_stations, args=(client,json_payload,dgp_stations_status))
+				t.start() #do not wait, on_message must be free
 			except jsonschema.exceptions.ValidationError as err:
-				boolGetStations = False
 				logger.error(f"unable to validate payload '{payload}' for gas_stations with error: '{err}'")
-
-		if boolGetStations:
-			#start the request, processing and publishing in a seperate request, it could take long
-			t = threading.Thread(target=publish_stations, args=(client,json_payload,dgp_stations_status))
-			t.start() #do not wait, on_message must be free
 
 	elif message.topic.startswith("homeassistant/sensor/dgp_gas_station/"): #just register the topic where a publish has taken place
 		logger.debug(f"on_message: received the topic '{message.topic}'")
@@ -179,10 +174,10 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 	stationtopic = f"{station_info['station_id']}_{station_info['fuel_type']}"
 	sensorname = f"gas_station_{station_info['station_id']}_{station_info['fuel_type']}"
 	if lowestprice > 0:
-		stationtopic = f"{station_info['fuel_type']}_lowestprice_{lowestprice}"
+		stationtopic = f"{station_info['fuel_type']}_lowest_price_{lowestprice}"
 		sensorname = f"gas_station_{station_info['fuel_type']}_lowest_price_{lowestprice}"
 		if 'identifier' in station_request: #add identifier to the sensor
-			stationtopic = f"{station_info['fuel_type']}_{station_request['identifier']}_lowestprice_{lowestprice}"
+			stationtopic = f"{station_info['fuel_type']}_{station_request['identifier']}_lowest_price_{lowestprice}"
 			sensorname = f"gas_station_{station_info['fuel_type']}_{station_request['identifier']}_lowest_price_{lowestprice}"
 
 	topic = f"homeassistant/sensor/dgp_gas_station/{stationtopic}/config"
@@ -192,12 +187,12 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		topic,
 		json.dumps(
 			{
-				"name": f"gas_station_{stationtopic}",
+				"name": sensorname,
 				"icon": "mdi:fuel",
 				"state_topic": f"homeassistant/sensor/dgp_gas_station/{stationtopic}/state",
 				"json_attributes_topic": f"homeassistant/sensor/dgp_gas_station/{stationtopic}/attr",
 				"unit_of_measurement": "€",
-				"unique_id": f"gas_station_{stationtopic}",
+				"unique_id": sensorname,
 			}
 		)
 	)
@@ -273,6 +268,9 @@ def publish_station(client,station_request,station_info,status=None,lowestprice=
 		try:
 			g = requests.get(sensor_url, headers=headers, timeout=10)
 			logger.debug('publish_station: get = %s',g)
+			if g.status_code != 200:
+				logger.warning(f"Unable to find sensor with url '{sensor_url}', status code is '{g.status_code}'")
+				return ""
 			r = requests.post(sensor_url, json=obj, headers=headers, timeout=10)
 			logger.debug('publish_station: Status Code  = %s',r.status_code)
 			return r.status_code
@@ -298,7 +296,8 @@ def publish_stations(client,station_request,status):
 	"""
 	try:
 		result = gas_stations(station_request['fuel_type'],station_request['longitude'],station_request['latitude'],int(station_request['radius']))
-		if 'gas_stations' in result:
+		if result != None and 'gas_stations' in result:
+			logger.debug(f"publish_stations: there is a result, processing stations")
 			if isinstance(result['gas_stations'], list):
 				status['number_of_stations'] = len(result['gas_stations'])
 				logger.info("publishing stations to mqtt")
@@ -380,24 +379,26 @@ def publish_status(client,status):
 
 	logger.info("publishing status done")
 
-def start_mqtt_client(mqtthost, mqttport, mqttusername=None, mqttpassword=None):
+def start_mqtt_client(mqtt_host, mqtt_port, mqtt_username=None, mqtt_password=None):
 	"""
 	Initialize the MQTT client
-	:param mqtthost: The host or ip of the MQTT instance
-	:param mqttport: The port of the MQTT instance
-	:param mqttusername: The username for authentication
-	:param mqttpassword: The password for authentication
+	:param mqtt_host: The host or ip of the MQTT instance
+	:param mqtt_port: The port of the MQTT instance
+	:param mqtt_username: The username for authentication
+	:param mqtt_password: The password for authentication
 	"""
 	global mqtt_client
 
-	logger.info("Connecting mqtt")
-	mqtt_client = mqtt.Client("dutch_gas_prices")
-	if mqttusername:
-		mqtt_client.username_pw_set(username=mqttusername, password=mqttpassword)
+	mqtt_client_name = os.environ.get("HOSTNAME")
+	logger.info(f"Connecting to mqtt host '{mqtt_host}' with clientname '{mqtt_client_name}'")
+	mqtt_client = mqtt.Client(mqtt_client_name)
+	if mqtt_username:
+		logger.info(f"Using username '{mqtt_username}' to connect to '{mqtt_host}'")
+		mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_password)
 	mqtt_client.on_connect = on_connect
 	mqtt_client.on_message = on_message
 	mqtt_client.on_disconnect = on_disconnect
-	mqtt_client.connect(host=mqtthost, port=int(mqttport))
+	mqtt_client.connect(host=mqtt_host, port=int(mqtt_port))
 	mqtt_client.loop_forever()
 
 if __name__ == "__main__":

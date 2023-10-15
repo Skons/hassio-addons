@@ -1,5 +1,5 @@
 #https://github.com/hassio-addons/addon-base-python/pkgs/container/base-python%2Farmv7
-ARG BUILD_FROM=ghcr.io/hassio-addons/base-python/amd64:11.0.5
+ARG BUILD_FROM=ghcr.io/hassio-addons/base-python/amd64:11.0.6
 FROM ${BUILD_FROM}
 
 # Set shell
@@ -11,6 +11,18 @@ ARG BUILD_ARCH=amd64
 #copy the app
 COPY rootfs/app /app
 COPY rootfs/run.sh /
+
+#removing musl, it was to new
+#musl-1.2.4-r1:
+#homeassistant hassio_supervisor[555]:
+#     breaks: musl-dev-1.2.4-r2[musl=1.2.4-r2]
+RUN \
+    apk del musl
+
+#APK repository 3.18 does not have tesseract for amrv7
+ARG TARGETARCH
+RUN arch=$TARGETARCH \
+    && if [ "$TARGETARCH" = "armv7" ]; then RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.17/community' >> /etc/apk/repositories; fi
 
 #install packages
 RUN \
