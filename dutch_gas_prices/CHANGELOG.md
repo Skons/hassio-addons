@@ -1,5 +1,8 @@
 # Changelog
 
+## 2024.01.25.1
+ - Updated to the latest python image
+
 ## 2023.10.15.1
 **Important**: The naming of the sensors have been changed. This change is **breaking**! The documenation already reflected this change, sensors are now named `_lowest_price_` instead of `_lowestprice_`
  - It's no longer possible to search for a station outside the longitude and latitude of the netherlands
