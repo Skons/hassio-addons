@@ -391,7 +391,7 @@ def start_mqtt_client(mqtt_host, mqtt_port, mqtt_username=None, mqtt_password=No
 
 	mqtt_client_name = os.environ.get("HOSTNAME")
 	logger.info(f"Connecting to mqtt host '{mqtt_host}' with clientname '{mqtt_client_name}'")
-	mqtt_client = mqtt.Client(mqtt_client_name)
+	mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, mqtt_client_name)
 	if mqtt_username:
 		logger.info(f"Using username '{mqtt_username}' to connect to '{mqtt_host}'")
 		mqtt_client.username_pw_set(username=mqtt_username, password=mqtt_password)
