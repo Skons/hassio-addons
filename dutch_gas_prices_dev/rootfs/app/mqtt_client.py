@@ -391,7 +391,7 @@ def start_mqtt_client(mqtthost, mqttport, mqttusername=None, mqttpassword=None):
 	global mqtt_client
 
 	logger.info("Connecting mqtt")
-	mqtt_client = mqtt.Client("dutch_gas_prices")
+	mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "dutch_gas_prices")
 	if mqttusername:
 		mqtt_client.username_pw_set(username=mqttusername, password=mqttpassword)
 	mqtt_client.on_connect = on_connect
