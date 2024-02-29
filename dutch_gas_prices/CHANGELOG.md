@@ -1,5 +1,8 @@
 # Changelog
 
+## 2024.2.29.1
+ - Fix [#65](https://github.com/Skons/hassio-addons/issues/65) by MWeesenaar
+
 ## 2024.01.25.1
  - Updated to the latest python image
 
